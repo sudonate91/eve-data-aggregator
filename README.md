@@ -120,22 +120,130 @@ docker restart eve-data-aggregator
 
 ---
 
+## Database
+
+The stack includes a bundled MySQL 8.4 container (`eve-mysql`). You do not need an existing MySQL instance — everything runs together.
+
+### How it's structured
+
+- `eve-mysql` container runs MySQL 8.4, exposed on **host port 3307** (avoids conflict with any existing MySQL on 3306)
+- App container connects to `eve-mysql` by hostname over an internal Docker bridge network
+- Data is stored in a named Docker volume `eve-mysql-data` — survives container removal and image updates
+- Schema and databases are created automatically on first start via `db/init/` scripts
+
+### Port 3307 — connecting Workbench / TablePlus
+
+To browse data externally, add a new connection in MySQL Workbench or TablePlus:
+- **Hostname:** `<your-unraid-ip>` (or `127.0.0.1` for local)
+- **Port:** `3307`
+- **Username:** `S0b_Admin` (or `root`)
+
+---
+
+### Unraid — Install Order (Two Containers)
+
+Unraid doesn't use `docker-compose`. Install two separate containers via the template XML files.
+
+**Step 1: Install MySQL template:**
+```bash
+curl -o /boot/config/plugins/dockerMan/templates-user/my-eve-mysql.xml \
+  https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/unraid-mysql-template.xml
+```
+Docker tab → Add Container → select `eve-mysql` → fill in:
+- `MYSQL_ROOT_PASSWORD` — strong password, save it somewhere safe
+- `MYSQL_USER` — `S0b_Admin`
+- `MYSQL_PASSWORD` — app user password
+
+Click **Apply**. Wait for the container to show as running (init scripts take ~15 seconds on first boot).
+
+**Step 2: Create the shared network (SSH, one time only):**
+```bash
+docker network create eve-network
+```
+
+**Step 3: Install the app template** (same as before, `DB_HOST` now defaults to `eve-mysql`):
+```bash
+curl -o /boot/config/plugins/dockerMan/templates-user/my-eve-data-aggregator.xml \
+  https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/unraid-template.xml
+```
+Docker tab → Add Container → select `eve-data-aggregator` → fill in credentials → Apply.
+
+> Both containers must be on `eve-network`. This is set in the templates — verify it's correct in each container's **Network** field in the WebUI.
+
+---
+
+### Migrating Existing Data (Workbench)
+
+If you have data in an existing MySQL instance, migrate it before starting the app.
+
+**Step 1 — Export from your existing MySQL (Workbench):**
+1. Open Workbench → connect to your existing MySQL (port 3306)
+2. **Server → Data Export**
+3. Select all 5 schemas: `S0b`, `S0b_Struct`, `Ven0m`, `KryTek`, `S0b_Mart`
+4. Check **Export to Self-Contained File** → save as `eve-migration.sql`
+5. Check **Include Create Schema** and **Include Stored Procedures/Functions**
+6. Click **Start Export**
+
+**Step 2 — Import into containerized MySQL (Workbench):**
+1. Open Workbench → **New Connection** → host: `<unraid-ip>`, port: `3307`, user: `root`
+2. **Server → Data Import**
+3. Select **Import from Self-Contained File** → choose `eve-migration.sql`
+4. Leave **Default Target Schema** blank (dump creates its own schemas)
+5. Click **Start Import**
+
+**Step 3 — Start the app:**
+Docker tab → start `eve-data-aggregator` (or it auto-starts if already added).
+
+> The old MySQL on port 3306 is untouched throughout — zero risk to existing data.
+
+#### CLI alternative (SSH on Unraid):
+```bash
+bash db/migrate.sh eve-migration.sql
+# prompts for root password, pipes dump into eve-mysql container
+```
+
+---
+
+### Fresh Install (No Existing Data)
+
+Just start both containers in order. The `db/init/` scripts auto-create all 5 databases, tables, views, and seed wallet names. The app will start importing from ESI immediately.
+
+---
+
+### Backup
+
+```bash
+# SSH on Unraid — dump all databases from the container to a file
+docker exec eve-mysql \
+  mysqldump -u root -p"<root-password>" \
+  --databases S0b S0b_Struct Ven0m KryTek S0b_Mart \
+  > eve-backup-$(date +%Y%m%d).sql
+```
+
+Or use Unraid's Community Applications **CA Backup / Restore** plugin to back up the `eve-mysql-data` volume.
+
+---
+
 ## Running Locally (Development)
 
-**Prerequisites:** Node.js 20.17.0, npm 10.8.3, MySQL
+**Prerequisites:** Node.js 20.17.0, npm 10.8.3
 
+With Docker Compose — starts MySQL + app together:
 ```bash
 git clone https://github.com/sudonate91/eve-data-aggregator.git
 cd eve-data-aggregator
+cp .env.example .env
+# Edit .env — set MYSQL_ROOT_PASSWORD, DB_PASSWORD, corp IDs, etc.
+docker compose up --build
+```
+MySQL initializes on first start, app waits for it to be healthy before connecting.
+
+Without Docker (native Node.js, requires external MySQL):
+```bash
 npm install
 cp .env.example .env
-# Edit .env with your credentials
+# Set DB_HOST to your MySQL IP/hostname
 node bin/index.mjs
-```
-
-Or with Docker Compose (builds locally):
-```bash
-docker compose up --build
 ```
 
 ---

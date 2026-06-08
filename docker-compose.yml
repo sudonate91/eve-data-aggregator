@@ -1,15 +1,45 @@
 version: '3.8'
 
 services:
-  # Main application
+  # ── MySQL database ──────────────────────────────────────────────────────────
+  eve-mysql:
+    image: mysql:8.4
+    container_name: eve-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      # Host port 3307 avoids conflicts with any existing MySQL on 3306.
+      # Connect MySQL Workbench / TablePlus to <host-ip>:3307 to browse data.
+      - "3307:3306"
+    volumes:
+      # Named volume — data survives container removal and image updates.
+      # Only wiped by: docker compose down -v  (never happens accidentally).
+      - eve-mysql-data:/var/lib/mysql
+      # Init scripts run once on first start when the volume is empty.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - eve-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Application ─────────────────────────────────────────────────────────────
   app:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
     container_name: eve-data-aggregator
+    depends_on:
+      eve-mysql:
+        condition: service_healthy
     environment:
-      # Load from .env file
       - CLIENT_ID=${CLIENT_ID}
       - CALLBACK_URL=${CALLBACK_URL}
       - SCOPE=${SCOPE}
@@ -20,20 +50,19 @@ services:
       - KRYTEK_CORPORATION_ID=${KRYTEK_CORPORATION_ID}
       - S0B_MART_CORPORATION_ID=${S0B_MART_CORPORATION_ID}
       - JANICE_API_KEY=${JANICE_API_KEY}
-      - DB_HOST=${DB_HOST}
+      # App connects to the MySQL container by service name on the bridge network
+      - DB_HOST=eve-mysql
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - S0b_STRUCT_DB_NAME=${S0b_STRUCT_DB_NAME}
-      - VEN0M_DB_NAME=${VEN0M_DB_NAME}
-      - KRYTEK_DB_NAME=${KRYTEK_DB_NAME}
-      - S0B_MART_DB_NAME=${S0B_MART_DB_NAME}
-      - ROOT_USER=${ROOT_USER}
-      - ROOT_PASSWORD=${ROOT_PASSWORD}
-      # Non-interactive mode configuration
+      - DB_NAME=${DB_NAME:-S0b}
+      - S0b_STRUCT_DB_NAME=${S0b_STRUCT_DB_NAME:-S0b_Struct}
+      - VEN0M_DB_NAME=${VEN0M_DB_NAME:-Ven0m}
+      - KRYTEK_DB_NAME=${KRYTEK_DB_NAME:-KryTek}
+      - S0B_MART_DB_NAME=${S0B_MART_DB_NAME:-S0b_Mart}
+      - ROOT_USER=root
+      - ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - USE_ENV_CONFIG=${USE_ENV_CONFIG:-true}
       - RUN_INTERVAL_MINUTES=${RUN_INTERVAL_MINUTES:-60}
-      # Job enable/disable toggles
       - ENABLE_S0B_WALLET=${ENABLE_S0B_WALLET:-true}
       - ENABLE_S0B_STRUCT_WALLET=${ENABLE_S0B_STRUCT_WALLET:-false}
       - ENABLE_VEN0M_WALLET=${ENABLE_VEN0M_WALLET:-false}
@@ -41,42 +70,16 @@ services:
       - ENABLE_S0B_MART_WALLET=${ENABLE_S0B_MART_WALLET:-false}
       - ENABLE_S0B_STRUCT_CONTRACTS=${ENABLE_S0B_STRUCT_CONTRACTS:-false}
       - ENABLE_CSV_IMPORT=${ENABLE_CSV_IMPORT:-false}
-    # For interactive CLI
-    stdin_open: true
-    tty: true
-    # For Unraid: use host network mode to access localhost databases
-    network_mode: "host"
-    # For non-Unraid: comment out network_mode above and uncomment networks below
-    # networks:
-    #   - eve-network
+    networks:
+      - eve-network
     restart: unless-stopped
-    # Mount volume for persistent data if needed
-    # volumes:
-    #   - ./data:/app/data
-
-  # Optional: MySQL database for local development/testing
-  # Uncomment if you want to run MySQL in Docker instead of using external DB
-  # mysql:
-  #   image: mysql:8.0
-  #   container_name: eve-mysql
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
-  #     MYSQL_DATABASE: ${DB_NAME}
-  #     MYSQL_USER: ${DB_USER}
-  #     MYSQL_PASSWORD: ${DB_PASSWORD}
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - mysql_data:/var/lib/mysql
-  #   networks:
-  #     - eve-network
-  #   restart: unless-stopped
-  #   command: --default-authentication-plugin=mysql_native_password
 
 networks:
   eve-network:
     driver: bridge
 
-# Uncomment if using local MySQL
-# volumes:
-#   mysql_data:
+volumes:
+  # Named volume for MySQL data persistence.
+  # To back up: docker run --rm -v eve-mysql-data:/data -v $(pwd):/backup alpine \
+  #               tar czf /backup/eve-mysql-backup.tar.gz /data
+  eve-mysql-data:
