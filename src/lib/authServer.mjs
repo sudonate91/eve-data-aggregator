@@ -23,6 +23,7 @@ import selfsigned from 'selfsigned';
 import { validateEveJwt } from './eve-esi/validateJwt.mjs';
 import { findByJobName, upsertAuthData } from './service/tokenService.mjs';
 import chalk from 'chalk';
+import { QueryTypes } from 'sequelize';
 
 // In-memory store: state → { job, codeVerifier, sequelizeInstance }
 const pendingAuth = new Map();
@@ -263,9 +264,11 @@ async function loadDbStatus(){
   try{
     const r=await fetch('/db-status');
     const data=await r.json();
-    document.getElementById('db-status-body').innerHTML=data.map(d=>
-      '<tr><td>'+d.db+'</td><td class="'+(d.journalRows>0?'ok':'need')+'">'+(d.journalRows>0?'✓ '+d.journalRows.toLocaleString()+' rows':'✗ Empty')+'</td><td class="'+(d.tokenRows>0?'ok':'na')+'">'+(d.tokenRows>0?'✓ '+d.tokenRows+' token(s)':'—')+'</td></tr>'
-    ).join('');
+    document.getElementById('db-status-body').innerHTML=data.map(d=>{
+      const jCell = d.journalRows<0 ? '<span class="na">No table yet</span>' : d.journalRows>0 ? '<span class="ok">✓ '+d.journalRows.toLocaleString()+' rows</span>' : '<span class="need">✗ Empty</span>';
+      const tCell = d.tokenRows<0 ? '<span class="na">—</span>' : d.tokenRows>0 ? '<span class="ok">✓ '+d.tokenRows+' token(s)</span>' : '<span class="na">—</span>';
+      return '<tr><td>'+d.db+'</td><td>'+jCell+'</td><td>'+tCell+'</td></tr>';
+    }).join('');
   }catch(e){}
 }
 async function startMigration(){
@@ -300,21 +303,24 @@ setTimeout(()=>location.reload(),30000);
   res.end(html);
 }
 
-async function handleDbStatus(req, res) {
-  const rootPw = process.env.MYSQL_ROOT_PASSWORD || '';
-  const host   = process.env.DB_HOST || '127.0.0.1';
-  const port   = process.env.DB_PORT || '3306';
+const DB_SEQUELIZE_MAP = {
+  S0b:       () => import('../utils/sequelizeClient.mjs').then(m => m.default),
+  S0b_Struct:() => import('../utils/structSequelizeClient.mjs').then(m => m.default),
+  Ven0m:     () => import('../utils/ven0mSequelizeClient.mjs').then(m => m.default),
+  KryTek:    () => import('../utils/krytekSequelizeClient.mjs').then(m => m.default),
+  S0b_Mart:  () => import('../utils/s0bMartSequelizeClient.mjs').then(m => m.default),
+};
 
+async function handleDbStatus(req, res) {
   const results = await Promise.all(ALL_DBS.map(async (db) => {
     try {
+      const sequelize = await DB_SEQUELIZE_MAP[db]();
       const journalTable = db === 'S0b_Struct' ? 'contracts' : '1_journal_entries';
-      const out = await runMysqlQuery(
-        `SELECT (SELECT COUNT(*) FROM \`${db}\`.\`${journalTable}\`) AS jrows, (SELECT COUNT(*) FROM \`${db}\`.tokens) AS trows;`,
-        host, port, rootPw
-      );
-      const lines = out.trim().split('\n').filter(l => l && !l.startsWith('jrows'));
-      const [jrows, trows] = (lines[0] || '0\t0').split('\t').map(Number);
-      return { db, journalRows: jrows, tokenRows: trows };
+      const [[jRow], [tRow]] = await Promise.all([
+        sequelize.query(`SELECT COUNT(*) AS cnt FROM \`${journalTable}\``, { type: QueryTypes.SELECT }),
+        sequelize.query(`SELECT COUNT(*) AS cnt FROM tokens`, { type: QueryTypes.SELECT }),
+      ]);
+      return { db, journalRows: Number(jRow.cnt), tokenRows: Number(tRow.cnt) };
     } catch {
       return { db, journalRows: -1, tokenRows: -1 };
     }
