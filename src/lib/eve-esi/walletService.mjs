@@ -2,6 +2,84 @@ import { upsertJournalEntries } from '../service/transactionEntrieService.mjs';
 import { esiRequest } from '../../utils/esiClient.mjs';
 import chalk from 'chalk';
 
+const ESI_BASE = 'https://esi.evetech.net/latest';
+
+function buildJournalUrl(corporationId, division, page) {
+  return `${ESI_BASE}/corporations/${corporationId}/wallets/${division}/journal/?datasource=tranquility&page=${page}`;
+}
+
+function tagEntries(entries, walletDivision) {
+  entries.forEach((entry) => {
+    entry.wallet_division = walletDivision;
+    entry.transaction_type = parseFloat(entry.amount) < 0 ? 0 : 1;
+  });
+  return entries;
+}
+
+async function fetchDivisionPage(corporationId, division, page, headers) {
+  const url = buildJournalUrl(corporationId, division, page);
+  const res = await esiRequest(url, { headers });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`HTTP ${res.status} for division ${division} page ${page}: ${body}`);
+  }
+
+  const data = await res.json();
+  const totalPages = parseInt(res.headers.get('X-Pages') ?? '1', 10);
+  return { data, totalPages };
+}
+
+async function importDivision(corporationId, division, headers, sequelizeInstance, characterName) {
+  console.log(chalk.blue(`\n[Division ${division}] Fetching page 1...`));
+
+  let firstPageData, totalPages;
+  try {
+    ({ data: firstPageData, totalPages } = await fetchDivisionPage(
+      corporationId, division, 1, headers,
+    ));
+  } catch (err) {
+    console.error(chalk.red(`[Division ${division}] Failed to fetch page 1: ${err.message}`));
+    return;
+  }
+
+  if (firstPageData.length === 0) {
+    console.log(chalk.yellow(`[Division ${division}] No entries found.`));
+    return;
+  }
+
+  console.log(
+    chalk.cyan(`[Division ${division}] ${totalPages} page(s) total — fetching concurrently...`),
+  );
+
+  const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+
+  const remainingResults = await Promise.allSettled(
+    remainingPages.map((page) => fetchDivisionPage(corporationId, division, page, headers)),
+  );
+
+  const allEntries = [...tagEntries(firstPageData, division)];
+
+  for (const [idx, result] of remainingResults.entries()) {
+    const page = remainingPages[idx];
+    if (result.status === 'fulfilled') {
+      allEntries.push(...tagEntries(result.value.data, division));
+    } else {
+      console.error(
+        chalk.red(`[Division ${division}] Page ${page} failed: ${result.reason?.message}`),
+      );
+    }
+  }
+
+  console.log(
+    chalk.green(
+      `[Division ${division}] ${characterName} — ${allEntries.length} total entries across ${totalPages} page(s)`,
+    ),
+  );
+
+  await upsertJournalEntries(allEntries, sequelizeInstance);
+}
+
 export async function importWalletData(
   jwt,
   accessToken,
@@ -9,85 +87,11 @@ export async function importWalletData(
   corporationId,
 ) {
   const characterName = jwt['name'];
+  const headers = { Authorization: `Bearer ${accessToken}` };
 
-  for (let walletDivision = 1; walletDivision <= 7; walletDivision++) {
-    let page = 1;
-    let hasMorePages = true;
-
-    while (hasMorePages && page <= 10) {
-      const walletPath = `https://esi.evetech.net/latest/corporations/${corporationId}/wallets/${walletDivision}/journal/?datasource=tranquility&page=${page}`;
-
-      console.log(
-        chalk.blue(
-          `\nFetching data for wallet division ${walletDivision}, page ${page}...`,
-        ),
-      );
-
-      const headers = {
-        Authorization: `Bearer ${accessToken}`,
-      };
-
-      try {
-        const res = await esiRequest(walletPath, { headers: headers });
-        console.log(
-          chalk.cyan(
-            `\nMade request to ${walletPath} with headers: ${JSON.stringify(
-              [...res.headers.entries()].reduce((acc, [key, value]) => {
-                acc[key] = value;
-                return acc;
-              }, {}),
-            )}`,
-          ),
-        );
-
-        if (res.status === 404) {
-          console.log(
-            chalk.yellow(
-              `Page ${page} does not exist for wallet division ${walletDivision}. Stopping pagination.`,
-            ),
-          );
-          hasMorePages = false;
-          break;
-        }
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error(
-            chalk.red(
-              `HTTP error ${res.status} for wallet division ${walletDivision}, page ${page}: ${errorText}`,
-            ),
-          );
-          hasMorePages = false;
-          continue;
-        }
-
-        const data = await res.json();
-        if (data.length === 0) {
-          hasMorePages = false;
-        } else {
-          data.forEach((entry) => {
-            entry.wallet_division = walletDivision;
-            entry.amount = parseFloat(entry.amount).toFixed(2);
-            entry.balance = parseFloat(entry.balance).toFixed(2);
-            entry.transaction_type = entry.amount < 0 ? 0 : 1;
-          });
-          console.log(
-            chalk.green(
-              `\n${characterName} has ${data.length} wallet journal entries in division ${walletDivision}, page ${page}`,
-            ),
-          );
-          await upsertJournalEntries(data, sequelizeInstance);
-          page++;
-        }
-      } catch (error) {
-        console.error(
-          chalk.red(
-            `Error fetching data for wallet division ${walletDivision}, page ${page}: ${error.message}`,
-          ),
-        );
-        hasMorePages = false;
-      }
-    }
-  }
+  await Promise.all(
+    Array.from({ length: 7 }, (_, i) => i + 1).map((division) =>
+      importDivision(corporationId, division, headers, sequelizeInstance, characterName),
+    ),
+  );
 }
-// fetchWithRetry is now handled by esiClient.mjs

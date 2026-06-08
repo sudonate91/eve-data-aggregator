@@ -50,11 +50,15 @@ const defineModel = (sequelizeInstance) => {
       job: {
         type: DataTypes.STRING(255),
         allowNull: false,
+        unique: true,
       },
     },
     {
       tableName: 'tokens',
       timestamps: false,
+      indexes: [
+        { unique: true, fields: ['job'] },
+      ],
     },
   );
 };

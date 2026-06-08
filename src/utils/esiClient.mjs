@@ -152,39 +152,44 @@ function updateRateLimitTracking(res) {
       limit: rateLimitLimit,
     };
 
-    // Log if approaching rate limit
-    if (rateLimitStats[rateLimitGroup].remaining <= 20) {
-      console.warn(
-        chalk.yellow(
-          `⚠️  Rate limit for ${rateLimitGroup}: ${rateLimitStats[rateLimitGroup].remaining} remaining`
-        )
-      );
-    }
   }
 }
 
 /**
- * Check if we should slow down based on rate limit
+ * Check if we should slow down based on rate limit.
+ * Three tiers:
+ *   critical (≤15): hard stop — wait 60s for floating-window recovery, re-check in a loop
+ *   low     (≤30):  throttle — 2s delay between requests
+ *   normal  (> 30): comfortable pace — 500ms between requests
  */
 async function checkRateLimit(res) {
   const rateLimitRemaining = res.headers.get('X-Ratelimit-Remaining');
-  
-  if (rateLimitRemaining !== null) {
-    const remaining = parseInt(rateLimitRemaining, 10);
-    
-    if (remaining <= 10) {
-      console.warn(chalk.yellow('⚠️  Rate limit very low - adding 2s delay'));
-      await sleep(2000);
-    } else if (remaining <= 30) {
-      console.warn(chalk.yellow('⚠️  Rate limit low - adding 1s delay'));
-      await sleep(1000);
-    } else {
-      // Normal operation - small delay to spread load
-      await sleep(250);
+  const rateLimitGroup = res.headers.get('X-Ratelimit-Group') ?? 'unknown';
+
+  if (rateLimitRemaining === null) {
+    await sleep(500);
+    return;
+  }
+
+  let remaining = parseInt(rateLimitRemaining, 10);
+
+  if (remaining <= 15) {
+    const recoverySecs = 60;
+    console.warn(chalk.red(
+      `🛑 [${rateLimitGroup}] Rate limit critically low (${remaining} remaining) — pausing ${recoverySecs}s for token recovery...`,
+    ));
+    await sleep(recoverySecs * 1000);
+    // Re-check using stored stats after recovery wait
+    const stored = rateLimitStats[rateLimitGroup];
+    if (stored && stored.remaining <= 15) {
+      console.warn(chalk.red(`🛑 [${rateLimitGroup}] Still low (${stored.remaining}) — waiting another ${recoverySecs}s...`));
+      await sleep(recoverySecs * 1000);
     }
+  } else if (remaining <= 30) {
+    console.warn(chalk.yellow(`⚠️  [${rateLimitGroup}] Rate limit low (${remaining} remaining) — throttling to 2s`));
+    await sleep(2000);
   } else {
-    // Default delay to avoid bursting
-    await sleep(250);
+    await sleep(500);
   }
 }
 
