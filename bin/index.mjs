@@ -11,6 +11,7 @@ import sequelize from '../src/utils/sequelizeClient.mjs';
 import structSequelize from '../src/utils/structSequelizeClient.mjs';
 import ven0mSequelize from '../src/utils/ven0mSequelizeClient.mjs';
 import krytekSequelize from '../src/utils/krytekSequelizeClient.mjs';
+import s0bMartSequelize from '../src/utils/s0bMartSequelizeClient.mjs';
 import { importCsvToDb } from '../src/utils/csvWalletHistory.mjs';
 
 dotenv.config();
@@ -32,6 +33,7 @@ const runJobs = async () => {
     !jobSelections.importS0bStructureManagementWalletData &&
     !jobSelections.importVen0mWalletData &&
     !jobSelections.importKryTekWalletData &&
+    !jobSelections.importS0bMartWalletData &&
     !jobSelections.importS0bStructContracts
   ) {
     jobSelections = await inquirer.prompt([
@@ -63,6 +65,12 @@ const runJobs = async () => {
         type: 'confirm',
         name: 'importKryTekWalletData',
         message: 'Do you want to import KryTek Wallet Data?',
+        default: false,
+      },
+      {
+        type: 'confirm',
+        name: 'importS0bMartWalletData',
+        message: 'Do you want to import S0b-Mart Wallet Data?',
         default: false,
       },
       {
@@ -176,6 +184,27 @@ const runJobs = async () => {
     }
   }
 
+  if (jobSelections.importS0bMartWalletData) {
+    try {
+      const authData = await runOAuthFlow(
+        'importS0bMartWalletData',
+        s0bMartSequelize,
+      );
+      const { jwt, accessToken } = authData;
+      await importWalletData(
+        jwt,
+        accessToken,
+        s0bMartSequelize,
+        process.env.S0B_MART_CORPORATION_ID,
+      );
+      console.log(chalk.green('importS0bMartWalletData completed successfully.'));
+    } catch (error) {
+      console.error(
+        chalk.red(`Error during importS0bMartWalletData: ${error.message}`),
+      );
+    }
+  }
+
   if (jobSelections.importS0bStructContracts) {
     try {
       const authData = await runOAuthFlow(
@@ -222,6 +251,13 @@ const initialize = async () => {
     console.log(
       chalk.green(
         'Database connection to KryTek has been established successfully.',
+      ),
+    );
+
+    await s0bMartSequelize.authenticate();
+    console.log(
+      chalk.green(
+        'Database connection to S0b_Mart has been established successfully.',
       ),
     );
   } catch (err) {
