@@ -16,6 +16,7 @@
 import http from 'http';
 import https from 'https';
 import crypto from 'crypto';
+import fs from 'fs';
 import { spawn } from 'child_process';
 import { URLSearchParams, URL } from 'url';
 import fetch from 'node-fetch';
@@ -86,6 +87,8 @@ export async function startAuthServer() {
         await handleMigrate(req, res);
       } else if (req.method === 'GET' && reqUrl.pathname === '/db-status') {
         await handleDbStatus(req, res);
+      } else if (req.method === 'GET' && reqUrl.pathname === '/db-credentials') {
+        handleDbCredentials(req, res);
       } else if (req.method === 'GET' && reqUrl.pathname === '/app.js') {
         handleAppJs(req, res);
       } else {
@@ -222,6 +225,9 @@ async function handleDashboard(req, res) {
       <tbody id="db-status-body"><tr><td colspan="3" class="na">Loading...</td></tr></tbody>
     </table>
 
+    <h3>PowerBI / Workbench Connection</h3>
+    <div id="powerbi-creds" class="banner info" style="font-family:monospace;font-size:0.85em;line-height:1.8">Loading connection info...</div>
+
     <h3>Option A — Upload a SQL dump file</h3>
     <p style="font-size:.88rem;color:#8b949e;margin-bottom:16px">Export all databases from your existing MySQL (Workbench → Server → Data Export → all 5 schemas → single .sql file), then upload it here.</p>
     <div class="upload-area">
@@ -263,6 +269,24 @@ const DB_SEQUELIZE_MAP = {
   KryTek:    () => import('../utils/krytekSequelizeClient.mjs').then(m => m.default),
   S0b_Mart:  () => import('../utils/s0bMartSequelizeClient.mjs').then(m => m.default),
 };
+
+function handleDbCredentials(req, res) {
+  const passwordsFile = '/var/lib/mysql/.eve_passwords';
+  const host = process.env.DB_HOST || '127.0.0.1';
+  const port = process.env.DB_PORT || '3307';
+  let readonlyPassword = '(not available in local dev)';
+  try {
+    if (fs.existsSync(passwordsFile)) {
+      const content = fs.readFileSync(passwordsFile, 'utf8');
+      const match = content.match(/MYSQL_READONLY_PASSWORD="([^"]+)"/);
+      if (match) readonlyPassword = match[1];
+    } else if (process.env.MYSQL_READONLY_PASSWORD) {
+      readonlyPassword = process.env.MYSQL_READONLY_PASSWORD;
+    }
+  } catch { /* ignore */ }
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify({ host, port, readonlyPassword }));
+}
 
 async function handleDbStatus(req, res) {
   const results = await Promise.all(ALL_DBS.map(async (db) => {
@@ -373,12 +397,25 @@ async function handleMigrate(req, res) {
 function handleAppJs(req, res) {
   const js = `
 let reloadTimer=setTimeout(()=>location.reload(),30000);
+async function loadCredentials(){
+  try{
+    const r=await fetch('/db-credentials');
+    const d=await r.json();
+    const box=document.getElementById('powerbi-creds');
+    box.innerHTML='<strong>Host:</strong> '+d.host+' &nbsp;<strong>Port:</strong> '+d.port+'<br>'+
+      '<strong>User:</strong> eve_readonly &nbsp;<strong>Password:</strong> '+
+      '<span style="filter:blur(4px);cursor:pointer;user-select:all" title="click to reveal" onclick="this.style.filter=\\'none\\'">'+d.readonlyPassword+'</span><br>'+
+      '<strong>Databases:</strong> S0b, S0b_Struct, Ven0m, KryTek, S0b_Mart';
+  }catch(e){
+    document.getElementById('powerbi-creds').textContent='Could not load connection info.';
+  }
+}
 function showTab(name,btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
-  if(name==='migrate'){clearTimeout(reloadTimer);loadDbStatus();}
+  if(name==='migrate'){clearTimeout(reloadTimer);loadDbStatus();loadCredentials();}
 }
 function fileSelected(input){
   const f=input.files[0];
