@@ -65,12 +65,22 @@ export async function allTokensPresent() {
 /**
  * Start the HTTP auth server. Returns the server instance.
  */
-export function startAuthServer() {
+export async function startAuthServer() {
   const attrs = [{ name: 'commonName', value: 'localhost' }];
-  const pems = selfsigned.generate(attrs, { days: 3650, keySize: 2048 });
+  const pems = await selfsigned.generate(attrs, {
+    days: 3650,
+    keySize: 2048,
+    algorithm: 'sha256',
+    extensions: [
+      { name: 'subjectAltName', altNames: [
+        { type: 2, value: 'localhost' },
+        { type: 7, ip: '127.0.0.1' },
+      ]},
+    ],
+  });
 
   const server = https.createServer(
-    { key: pems.private, cert: pems.cert },
+    { key: pems.private, cert: pems.cert, minVersion: 'TLSv1.2' },
     async (req, res) => {
     const reqUrl = new URL(req.url, `https://localhost:${serverPort}`);
 

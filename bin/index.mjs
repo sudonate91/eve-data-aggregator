@@ -302,7 +302,7 @@ const main = async () => {
   const jobSelections = await getJobSelections();
   const jobDefs = buildJobDefs(jobSelections);
   configureAuthServer(jobDefs, authPort);
-  startAuthServer();
+  await startAuthServer();
 
   // In non-interactive mode, wait for all tokens to be present via the web UI
   // before running the first job batch.
