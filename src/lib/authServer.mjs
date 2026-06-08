@@ -335,29 +335,31 @@ async function handleMigrate(req, res) {
   const sqlBuffer = fileBuffer.slice(fileStart, fileEnd);
   res.write(`File received (${(sqlBuffer.length / 1024 / 1024).toFixed(1)} MB). Starting MySQL import...\n`);
 
-  const mysql = spawn('mysql',
-    ['-u', 'root', `-p${rootPw}`, '-h', host, '-P', String(port), '--verbose'],
-    { stdio: ['pipe', 'pipe', 'pipe'] }
-  );
-  mysql.on('error', (err) => {
-    if (err.code === 'ENOENT') {
-      res.write('\nERROR: mysql CLI not found on PATH.\n');
-      res.write('For local dev, import via MySQL Workbench instead:\n');
-      res.write(`  1. New connection: host 127.0.0.1, port ${port}, user root, password devroot\n`);
-      res.write('  2. Server -> Data Import -> select your .sql file -> Start Import\n');
-    } else {
-      res.write(`\nERROR: ${err.message}\n`);
+  // In production the mysql CLI is in the same container (PATH works).
+  // In local dev (Node on Windows host) we go through docker exec into the MySQL sidecar.
+  const isLocalDev = process.env.NODE_ENV !== 'production';
+  const devContainer = process.env.MYSQL_CONTAINER_NAME || 'eve-mysql-dev';
+
+  const [cmd, args] = isLocalDev
+    ? ['docker', ['exec', '-i', devContainer, 'mysql', '-u', 'root', `-p${rootPw}`, '--verbose']]
+    : ['mysql', ['-u', 'root', `-p${rootPw}`, '-h', host, '-P', String(port), '--verbose']];
+
+  const proc = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+  proc.on('error', (err) => {
+    res.write(`\nERROR: ${err.message}\n`);
+    if (err.code === 'ENOENT' && isLocalDev) {
+      res.write('Docker not found on PATH — is Docker Desktop running?\n');
     }
     res.end();
   });
-  mysql.stdout.on('data', d => res.write(d.toString()));
-  mysql.stderr.on('data', d => {
+  proc.stdout.on('data', d => res.write(d.toString()));
+  proc.stderr.on('data', d => {
     const line = d.toString();
     if (!line.toLowerCase().includes('warning: using a password')) res.write(line);
   });
-  mysql.stdin.write(sqlBuffer);
-  mysql.stdin.end();
-  mysql.on('close', (code) => {
+  proc.stdin.write(sqlBuffer);
+  proc.stdin.end();
+  proc.on('close', (code) => {
     if (code === 0) {
       console.log(chalk.green('[authServer] Migration import completed.'));
       res.write('\n✓ Import finished successfully.\n');
