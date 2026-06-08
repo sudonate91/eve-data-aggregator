@@ -24,15 +24,15 @@
   <Config Name="EVE Client ID" Target="CLIENT_ID" Default="" Mode="" Description="Your EVE Online ESI Application Client ID" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Callback URL" Target="CALLBACK_URL" Default="https://localhost/callback/" Mode="" Description="OAuth callback URL (must match ESI app configuration)" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="ESI Scope" Target="SCOPE" Default="esi-wallet.read_corporation_wallets.v1 esi-contracts.read_corporation_contracts.v1" Mode="" Description="ESI API scopes (space-separated)" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="OAuth State" Target="STATE" Default="unique-state" Mode="" Description="OAuth state parameter for security" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="OAuth State" Target="STATE" Default="" Mode="" Description="OAuth state parameter for security" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Main Corporation ID" Target="CORPORATION_ID" Default="" Mode="" Description="Main corporation ID (S0b Holdings)" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Structure Corp ID" Target="STRUCT_CORPORATION_ID" Default="" Mode="" Description="Structure Management corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Ven0m Corporation ID" Target="VEN0M_CORPORATION_ID" Default="" Mode="" Description="Ven0m corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="KryTek Corporation ID" Target="KRYTEK_CORPORATION_ID" Default="" Mode="" Description="KryTek corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="S0b Mart Corporation ID" Target="S0B_MART_CORPORATION_ID" Default="" Mode="" Description="S0b Mart corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Janice API Key" Target="JANICE_API_KEY" Default="" Mode="" Description="Janice API key for price checking" Type="Variable" Display="always" Required="false" Mask="true"/>
-  <Config Name="Database Host" Target="DB_HOST" Default="192.168.1.23" Mode="" Description="MySQL database server IP (use localhost or 127.0.0.1 for Unraid host)" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="Database User" Target="DB_USER" Default="S0b_Admin" Mode="" Description="MySQL database username" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Database Host" Target="DB_HOST" Default="" Mode="" Description="MySQL database server IP (use localhost or 127.0.0.1 for Unraid host)" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Database User" Target="DB_USER" Default="" Mode="" Description="MySQL database username" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Database Password" Target="DB_PASSWORD" Default="" Mode="" Description="MySQL database password" Type="Variable" Display="always" Required="true" Mask="true"/>
   <Config Name="Main Database Name" Target="DB_NAME" Default="S0b" Mode="" Description="Main database name" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Struct Database Name" Target="S0b_STRUCT_DB_NAME" Default="S0b_Struct" Mode="" Description="Structure management database name" Type="Variable" Display="always" Required="false" Mask="false"/>
