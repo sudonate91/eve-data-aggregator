@@ -1,0 +1,39 @@
+# Development override — use with:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Or add a shell alias (see README dev section).
+#
+# What this changes vs production:
+#   - app uses the 'development' Dockerfile target (includes devDependencies)
+#   - app source is volume-mounted so edits take effect without rebuild
+#   - app restarts automatically on crash (nodemon not required; just re-run)
+#   - MySQL port also exposed on 3307 for Workbench/TablePlus (already in base)
+#   - restart policy is 'no' for app — crashes stop cleanly, you re-run manually
+#   - DB uses a separate named volume (eve-mysql-dev-data) so dev data is
+#     isolated from any prod/Unraid data and can be wiped independently
+
+version: '3.8'
+
+services:
+  eve-mysql:
+    container_name: eve-mysql-dev
+    volumes:
+      - eve-mysql-dev-data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+
+  app:
+    build:
+      target: development
+    container_name: eve-data-aggregator-dev
+    volumes:
+      # Live source mount — edit files locally, changes are immediate
+      - .:/app
+      # Prevent host node_modules from overwriting container's
+      - /app/node_modules
+    restart: "no"
+    environment:
+      - NODE_ENV=development
+
+volumes:
+  eve-mysql-dev-data:

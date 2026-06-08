@@ -238,27 +238,88 @@ Or use Unraid's Community Applications **CA Backup / Restore** plugin to back up
 
 ---
 
-## Running Locally (Development)
+## Local Development
 
-**Prerequisites:** Node.js 20.17.0, npm 10.8.3
+**Prerequisites:** Node.js 20.17.0, Docker Desktop
 
-With Docker Compose — starts MySQL + app together:
+### First-time setup
+
 ```bash
 git clone https://github.com/sudonate91/eve-data-aggregator.git
 cd eve-data-aggregator
-cp .env.example .env
-# Edit .env — set MYSQL_ROOT_PASSWORD, DB_PASSWORD, corp IDs, etc.
-docker compose up --build
-```
-MySQL initializes on first start, app waits for it to be healthy before connecting.
-
-Without Docker (native Node.js, requires external MySQL):
-```bash
 npm install
-cp .env.example .env
-# Set DB_HOST to your MySQL IP/hostname
-node bin/index.mjs
+cp .env.dev .env
+# Edit .env — add your EVE ESI CLIENT_ID, CORPORATION_ID, and corp IDs
+# Leave DB_HOST=127.0.0.1 for native node, or change to eve-mysql for full compose
 ```
+
+---
+
+### Mode A — Native Node + DB in Docker (recommended for active dev)
+
+Best for iterating on code quickly — edit files and re-run immediately, no rebuilds.
+
+**Terminal 1 — start MySQL only:**
+```bash
+npm run db:dev
+# MySQL available at localhost:3307
+# Connect Workbench to 127.0.0.1:3307 to browse data while developing
+```
+
+**Terminal 2 — run the app:**
+```bash
+npm run dev
+# Reads from .env, connects to 127.0.0.1:3307
+# Edit any file, Ctrl+C, re-run — instant feedback
+```
+
+**To wipe and reset the dev database:**
+```bash
+npm run db:dev:reset
+# Destroys eve-mysql-dev-data volume and restarts fresh
+# Init scripts re-run, all tables recreated from scratch
+```
+
+---
+
+### Mode B — Full stack in Docker Compose
+
+Closest to production. Everything containerized, app waits for DB healthcheck.
+
+```bash
+npm run compose:dev
+# Builds development image, mounts source, starts both services
+```
+
+Edit files on your host — changes are live via the volume mount (no rebuild needed for source changes, rebuild only needed for `package.json` changes).
+
+```bash
+npm run compose:down   # stop and remove containers (data volume preserved)
+```
+
+---
+
+### Dev vs Prod differences
+
+| | Dev (`docker-compose.dev.yml`) | Prod |
+|---|---|---|
+| Docker image target | `development` (devDependencies included) | `production` |
+| App restart | `no` — crashes stop cleanly | `unless-stopped` |
+| Source | volume-mounted from host | baked into image |
+| DB volume | `eve-mysql-dev-data` (isolated) | `eve-mysql-data` |
+| DB container name | `eve-mysql-dev` | `eve-mysql` |
+| Run interval | 5 min (`.env.dev` default) | 60 min |
+
+---
+
+### Workbench connection for local dev
+
+| Setting | Value |
+|---|---|
+| Host | `127.0.0.1` |
+| Port | `3307` |
+| Username | `S0b_Admin` or `root` |
+| Password | `devpassword` / `devroot` (from `.env.dev`) |
 
 ---
 

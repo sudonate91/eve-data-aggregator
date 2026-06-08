@@ -8,7 +8,12 @@
     "npm": "10.8.3"
   },
   "scripts": {
-    "start": "node index.mjs",
+    "start": "node bin/index.mjs",
+    "dev": "node bin/index.mjs",
+    "db:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up eve-mysql",
+    "db:dev:reset": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v && npm run db:dev",
+    "compose:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "compose:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint .",
     "lint-fix": "prettier --write .",
