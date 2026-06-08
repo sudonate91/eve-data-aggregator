@@ -18,7 +18,27 @@ Imports EVE Online corporation wallet journal entries and Skyhook contracts from
 
 ## Running on Unraid (Primary Deployment)
 
-The image is hosted on Docker Hub at `sudonate91/eve-data-aggregator:latest` and updated automatically via GitHub Actions on every push to `main`.
+The image is hosted on Docker Hub at `sudonate91/eve-data-aggregator:latest`. MySQL 8.4 is **bundled inside the image** — you only need one container.
+
+### EVE ESI Application — Required Before Install
+
+You need a registered EVE application at [https://developers.eveonline.com/applications](https://developers.eveonline.com/applications).
+
+**Set the Callback URL to:**
+```
+https://<your-unraid-ip>:3000/callback
+```
+For example: `https://192.168.1.50:3000/callback`
+
+> The app serves HTTPS on port 3000 with a self-signed cert. EVE SSO requires `https`. You must register the **exact URL** including IP and port.
+
+If you want to also authenticate from local dev, add a second callback URL:
+```
+https://localhost:3000/callback
+```
+EVE allows multiple callback URLs per app — just add both.
+
+---
 
 ### First-Time Installation
 
@@ -38,38 +58,27 @@ curl -o /boot/config/plugins/dockerMan/templates-user/my-eve-data-aggregator.xml
 2. Select `eve-data-aggregator` from the user templates dropdown
 3. Fill in the required fields:
 
-| Variable | Description |
-|---|---|
-| `CLIENT_ID` | EVE ESI application Client ID |
-| `CALLBACK_URL` | OAuth callback URL (must match ESI app) |
-| `SCOPE` | ESI scopes (space-separated) |
-| `STATE` | OAuth state string |
-| `CORPORATION_ID` | S0b Holdings corporation ID |
-| `STRUCT_CORPORATION_ID` | S0b Structure Management corp ID |
-| `VEN0M_CORPORATION_ID` | Ven0m corp ID |
-| `KRYTEK_CORPORATION_ID` | KryTek corp ID |
-| `S0B_MART_CORPORATION_ID` | S0b-Mart corp ID |
-| `JANICE_API_KEY` | Janice API key for Skyhook pricing |
-| `DB_HOST` | MySQL host — use `127.0.0.1` for Unraid host |
-| `DB_USER` | MySQL username |
-| `DB_PASSWORD` | MySQL password |
-| `DB_NAME` | Main database name (`S0b`) |
-| `S0b_STRUCT_DB_NAME` | Struct database name (`S0b_Struct`) |
-| `VEN0M_DB_NAME` | Ven0m database name |
-| `KRYTEK_DB_NAME` | KryTek database name |
-| `S0B_MART_DB_NAME` | S0b-Mart database name |
-| `USE_ENV_CONFIG` | Must be `true` for non-interactive mode |
-| `RUN_INTERVAL_MINUTES` | How often to run (default: `60`) |
-| `ENABLE_S0B_WALLET` | `true` to enable S0b Holdings wallet import |
-| `ENABLE_S0B_STRUCT_WALLET` | `true` to enable Struct wallet import |
-| `ENABLE_VEN0M_WALLET` | `true` to enable Ven0m wallet import |
-| `ENABLE_KRYTEK_WALLET` | `true` to enable KryTek wallet import |
-| `ENABLE_S0B_MART_WALLET` | `true` to enable S0b-Mart wallet import |
-| `ENABLE_S0B_STRUCT_CONTRACTS` | `true` to enable Struct contracts import |
+| Variable | Value | Notes |
+|---|---|---|
+| `CLIENT_ID` | from EVE dev portal | |
+| `CALLBACK_URL` | `https://<unraid-ip>:3000/callback` | Must match ESI app exactly |
+| `SCOPE` | `esi-wallet.read_corporation_wallets.v1 esi-contracts.read_corporation_contracts.v1` | |
+| `STATE` | any random string | e.g. `my-eve-app-2024` |
+| `MYSQL_ROOT_PASSWORD` | strong password | Used for DB admin and migration import |
+| `DB_USER` | `S0b_Admin` | |
+| `DB_PASSWORD` | your password | |
+| `CORPORATION_ID` | S0b Holdings corp ID | |
+| *(other corp IDs)* | as needed | Leave blank to disable |
+| `USE_ENV_CONFIG` | `true` | Required — no interactive terminal in Docker |
+| `RUN_INTERVAL_MINUTES` | `60` | |
 
 4. Click **Apply**
+5. Open `https://<unraid-ip>:3000` in your browser
+6. Accept the self-signed certificate warning (click Advanced → Proceed)
+7. On **Tab 1 — Corp Authentication**: click Authenticate for each corp, log in with the director character
+8. Jobs start automatically once all corps are green
 
-> **DB_HOST note:** Container uses host networking — `127.0.0.1` reaches MySQL running on the Unraid host directly.
+> **First install with existing data?** Use **Tab 2 — Data Migration** in the web UI to upload a SQL dump from your old MySQL. No SSH or Workbench required.
 
 ---
 
@@ -77,28 +86,20 @@ curl -o /boot/config/plugins/dockerMan/templates-user/my-eve-data-aggregator.xml
 
 > Unraid's built-in "Check for Updates" does not reliably detect updates for manually added containers. Use SSH instead.
 
-**Check if a new image is available:**
 ```bash
 docker pull sudonate91/eve-data-aggregator:latest
 # "Image is up to date" → nothing new
-# "Pull complete" → new image downloaded, proceed below
+# "Pull complete" → new image downloaded, proceed:
+docker stop eve-data-aggregator && docker rm eve-data-aggregator
 ```
+Then Docker tab → **Add Container** → select saved template → **Apply**.
 
-**Update the container:**
-```bash
-docker stop eve-data-aggregator
-docker rm eve-data-aggregator
-```
-Then in Unraid WebUI → Docker tab → **Add Container** → select the saved template → **Apply**.
-Your environment variable values are stored in the template XML and will pre-populate automatically.
+> The MySQL data volume (`eve-mysql-data`) is **not touched** by updates — all your data is safe.
 
-**Optional alias for quick cleanup (add to `/root/.bashrc`):**
+**Optional alias (add to `/root/.bashrc`):**
 ```bash
 alias update-eve="docker pull sudonate91/eve-data-aggregator:latest && docker stop eve-data-aggregator && docker rm eve-data-aggregator"
 ```
-Then just run `update-eve`, followed by recreating via WebUI.
-
-> **Note:** `docker restart` does NOT pick up a new image — the container must be removed and recreated.
 
 ---
 
@@ -122,141 +123,93 @@ docker restart eve-data-aggregator
 
 ## Database
 
-The stack includes a bundled MySQL 8.4 container (`eve-mysql`). You do not need an existing MySQL instance — everything runs together.
+MySQL 8.4 is **bundled inside the app container** — no separate MySQL container needed. On first boot, `bin/entrypoint.sh` automatically:
+1. Initialises the MySQL data directory
+2. Creates all 5 databases (`S0b`, `S0b_Struct`, `Ven0m`, `KryTek`, `S0b_Mart`)
+3. Runs all schema scripts (tables, views, seed data)
+4. Creates the `S0b_Admin` user with your `DB_PASSWORD`
+5. Creates the `eve_readonly` PowerBI user
+6. Starts MySQL, then starts Node
 
-### How it's structured
-
-- `eve-mysql` container runs MySQL 8.4, exposed on **host port 3307** (avoids conflict with any existing MySQL on 3306)
-- App container connects to `eve-mysql` by hostname over an internal Docker bridge network
-- Data is stored in a named Docker volume `eve-mysql-data` — survives container removal and image updates
-- Schema and databases are created automatically on first start via `db/init/` scripts
+Data is stored in a named Docker volume `eve-mysql-data` — survives container removal and image updates.
 
 ### Port 3307 — connecting Workbench / TablePlus / PowerBI
 
-A read-only user `eve_readonly` is created automatically on first container start. Use this for PowerBI and any reporting tools — it has `SELECT` only, no ability to modify data.
+MySQL is exposed on **host port 3307** (avoids conflict with any existing MySQL on 3306).
+
+A read-only user `eve_readonly` is created on first boot for PowerBI and reporting tools.
 
 | Setting | Value |
 |---|---|
 | Host | `<your-unraid-ip>` |
 | Port | `3307` |
 | Username | `eve_readonly` |
-| Password | value of `MYSQL_READONLY_PASSWORD` env var on `eve-mysql` container |
-
-> **Simplest setup:** leave `MYSQL_READONLY_PASSWORD` blank — `eve_readonly` will get the same password as `DB_PASSWORD`. One password to remember, two users.
+| Password | value of `MYSQL_READONLY_PASSWORD` (or `DB_PASSWORD` if blank) |
 
 **PowerBI Desktop → Get Data → MySQL database:**
 - Server: `<unraid-ip>:3307`
 - Database: `S0b` (or whichever corp DB)
 - Username: `eve_readonly`
-- Password: as above
 
-For admin access (Workbench schema browsing), connect with `root` / `MYSQL_ROOT_PASSWORD` instead.
-
----
-
-### Before deploying to Unraid — seed your tokens locally first
-
-The containerized app **cannot do interactive OAuth** — there's no terminal to paste codes into. Tokens must exist in the database before the container starts.
-
-**Required one-time local setup:**
-1. Run `npm run db:dev` (starts local dev MySQL)
-2. Run `npm run dev` (interactive mode — `USE_ENV_CONFIG` can be `false` or omit it)
-3. Authenticate each enabled corp once — paste the codes as prompted
-4. Tokens are stored in each corp's `tokens` table in your local dev DB
-5. Export the full DB including tokens (Workbench Data Export or `db/migrate.sh`)
-6. Import into the Unraid `eve-mysql` container (Workbench Data Import on port 3307)
-
-Once tokens are in the container DB, the app refreshes them automatically on every run forever. If a token ever goes stale (container offline for months), the app will log a clear error and skip that corp rather than hanging silently.
+For admin access, connect with user `root` and `MYSQL_ROOT_PASSWORD`.
 
 ---
 
-### Unraid — Install Order (Two Containers)
+### Migrating Existing Data
 
-Unraid doesn't use `docker-compose`. Install two separate containers via the template XML files.
+**Option A — Upload via the web UI (easiest):**
+1. Open `https://<unraid-ip>:3000` → **Tab 2 — Data Migration**
+2. Export all 5 schemas from your old MySQL (Workbench → Server → Data Export → single .sql file)
+3. Upload the .sql file using the file picker
+4. Watch the live progress output — import streams directly into MySQL
+5. Switch to Tab 1 and authenticate corps
 
-**Step 1: Install MySQL template:**
+**Option B — Import via Workbench:**
+1. Connect Workbench to `<unraid-ip>:3307` user `root` / `MYSQL_ROOT_PASSWORD`
+2. Server → Data Import → select your .sql file → Start Import
+
+**Option C — SSH on Unraid:**
 ```bash
-curl -o /boot/config/plugins/dockerMan/templates-user/my-eve-mysql.xml \
-  https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/unraid-mysql-template.xml
+docker exec -i eve-data-aggregator \
+  mysql -u root -p"<root-password>" < eve-migration.sql
 ```
-Docker tab → Add Container → select `eve-mysql` → fill in:
-- `MYSQL_ROOT_PASSWORD` — strong password, save it somewhere safe
-- `MYSQL_USER` — `S0b_Admin`
-- `MYSQL_PASSWORD` — app user password
-
-Click **Apply**. Wait for the container to show as running (init scripts take ~15 seconds on first boot).
-
-**Step 2: Create the shared network (SSH, one time only):**
-```bash
-docker network create eve-network
-```
-
-**Step 3: Install the app template** (same as before, `DB_HOST` now defaults to `eve-mysql`):
-```bash
-curl -o /boot/config/plugins/dockerMan/templates-user/my-eve-data-aggregator.xml \
-  https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/unraid-template.xml
-```
-Docker tab → Add Container → select `eve-data-aggregator` → fill in credentials → Apply.
-
-> Both containers must be on `eve-network`. This is set in the templates — verify it's correct in each container's **Network** field in the WebUI.
-
----
-
-### Migrating Existing Data (Workbench)
-
-If you have data in an existing MySQL instance, migrate it before starting the app.
-
-**Step 1 — Export from your existing MySQL (Workbench):**
-1. Open Workbench → connect to your existing MySQL (port 3306)
-2. **Server → Data Export**
-3. Select all 5 schemas: `S0b`, `S0b_Struct`, `Ven0m`, `KryTek`, `S0b_Mart`
-4. Check **Export to Self-Contained File** → save as `eve-migration.sql`
-5. Check **Include Create Schema** and **Include Stored Procedures/Functions**
-6. Click **Start Export**
-
-**Step 2 — Import into containerized MySQL (Workbench):**
-1. Open Workbench → **New Connection** → host: `<unraid-ip>`, port: `3307`, user: `root`
-2. **Server → Data Import**
-3. Select **Import from Self-Contained File** → choose `eve-migration.sql`
-4. Leave **Default Target Schema** blank (dump creates its own schemas)
-5. Click **Start Import**
-
-**Step 3 — Start the app:**
-Docker tab → start `eve-data-aggregator` (or it auto-starts if already added).
-
-> The old MySQL on port 3306 is untouched throughout — zero risk to existing data.
-
-#### CLI alternative (SSH on Unraid):
-```bash
-bash db/migrate.sh eve-migration.sql
-# prompts for root password, pipes dump into eve-mysql container
-```
-
----
 
 ### Fresh Install (No Existing Data)
 
-Just start both containers in order. The `db/init/` scripts auto-create all 5 databases, tables, views, and seed wallet names. The app will start importing from ESI immediately.
+Nothing to do — schema is auto-created on first boot. Open the web UI, authenticate corps, done.
 
 ---
 
 ### Backup
 
 ```bash
-# SSH on Unraid — dump all databases from the container to a file
-docker exec eve-mysql \
+# SSH on Unraid — dump all databases from the bundled MySQL
+docker exec eve-data-aggregator \
   mysqldump -u root -p"<root-password>" \
   --databases S0b S0b_Struct Ven0m KryTek S0b_Mart \
   > eve-backup-$(date +%Y%m%d).sql
 ```
 
-Or use Unraid's Community Applications **CA Backup / Restore** plugin to back up the `eve-mysql-data` volume.
+Or use Unraid's **CA Backup / Restore** plugin to back up the `eve-mysql-data` volume.
 
 ---
 
 ## Local Development
 
 **Prerequisites:** Node.js 20.17.0, Docker Desktop
+
+### EVE ESI App — Callback URL for local dev
+
+Add `https://localhost:3000/callback` to your ESI application's callback URL list on [https://developers.eveonline.com/applications](https://developers.eveonline.com/applications).
+
+You can have multiple callbacks — add both:
+- `https://localhost:3000/callback` ← local dev
+- `https://<unraid-ip>:3000/callback` ← Unraid/Docker
+
+Then set in `.env`:
+```
+CALLBACK_URL=https://localhost:3000/callback
+```
 
 ### First-time setup
 
@@ -265,66 +218,58 @@ git clone https://github.com/sudonate91/eve-data-aggregator.git
 cd eve-data-aggregator
 npm install
 cp .env.dev .env
-# Edit .env — add your EVE ESI CLIENT_ID, CORPORATION_ID, and corp IDs
-# Leave DB_HOST=127.0.0.1 for native node, or change to eve-mysql for full compose
+# Edit .env — add CLIENT_ID, corp IDs, and set CALLBACK_URL as above
 ```
 
 ---
 
 ### Mode A — Native Node + DB in Docker (recommended for active dev)
 
-Best for iterating on code quickly — edit files and re-run immediately, no rebuilds.
-
 **Terminal 1 — start MySQL only:**
 ```bash
 npm run db:dev
-# MySQL available at localhost:3307
-# Connect Workbench to 127.0.0.1:3307 to browse data while developing
+# MySQL on localhost:3307 — leave this terminal open
 ```
 
 **Terminal 2 — run the app:**
 ```bash
 npm run dev
-# Reads from .env, connects to 127.0.0.1:3307
-# Edit any file, Ctrl+C, re-run — instant feedback
+# Auth server starts on https://localhost:3000
+# Open that URL, accept the cert warning, authenticate corps
 ```
+
+> **Browser cert warning** — the auth server uses a self-signed certificate. Click **Advanced → Proceed to localhost** (Chrome) or **Accept the Risk** (Firefox). This is expected and safe for local use.
 
 **To wipe and reset the dev database:**
 ```bash
 npm run db:dev:reset
-# Destroys eve-mysql-dev-data volume and restarts fresh
-# Init scripts re-run, all tables recreated from scratch
 ```
 
 ---
 
 ### Mode B — Full stack in Docker Compose
 
-Closest to production. Everything containerized, app waits for DB healthcheck.
-
 ```bash
 npm run compose:dev
-# Builds development image, mounts source, starts both services
+# Builds dev image, mounts source, starts MySQL sidecar + app
 ```
 
-Edit files on your host — changes are live via the volume mount (no rebuild needed for source changes, rebuild only needed for `package.json` changes).
+Edit files on your host — changes are live via volume mount. `npm run compose:down` to stop.
 
-```bash
-npm run compose:down   # stop and remove containers (data volume preserved)
-```
+> In compose dev mode, `CALLBACK_URL` and `DB_HOST` are set via `docker-compose.dev.yml` — the app connects to `eve-mysql` internally but the auth server is still accessible at `https://localhost:3000` from your host.
 
 ---
 
 ### Dev vs Prod differences
 
-| | Dev (`docker-compose.dev.yml`) | Prod |
+| | Local dev | Unraid/Docker prod |
 |---|---|---|
-| Docker image target | `development` (devDependencies included) | `production` |
-| App restart | `no` — crashes stop cleanly | `unless-stopped` |
-| Source | volume-mounted from host | baked into image |
-| DB volume | `eve-mysql-dev-data` (isolated) | `eve-mysql-data` |
-| DB container name | `eve-mysql-dev` | `eve-mysql` |
-| Run interval | 5 min (`.env.dev` default) | 60 min |
+| MySQL | Separate sidecar (`mysql:8.4` image) | Bundled inside app image |
+| `DB_HOST` | `127.0.0.1` (native) or `eve-mysql` (compose) | `127.0.0.1` (same container) |
+| `CALLBACK_URL` | `https://localhost:3000/callback` | `https://<unraid-ip>:3000/callback` |
+| Auth cert warning | Yes (self-signed) | Yes (self-signed) |
+| Run interval | 5 min | 60 min |
+| DB volume | `eve-mysql-dev-data` | `eve-mysql-data` |
 
 ---
 
@@ -359,24 +304,39 @@ This bumps `package.json`, creates a `vX.Y.Z` git tag, pushes to GitHub, and tri
 
 ## Troubleshooting
 
+**EVE SSO error: `The redirect URL does not match`**
+- The `CALLBACK_URL` env var must match **exactly** what is registered in your EVE ESI app (character for character — scheme, host, port, path, no trailing slash)
+- Local dev: register `https://localhost:3000/callback`
+- Unraid: register `https://<your-unraid-ip>:3000/callback`
+- Both can be registered on the same ESI app — EVE allows multiple callbacks
+
+**Browser shows `ERR_SSL_VERSION_OR_CIPHER_MISMATCH` or cert error**
+- The auth server uses a self-signed certificate — this is expected
+- Chrome: click **Advanced → Proceed to localhost (unsafe)**
+- Firefox: click **Advanced → Accept the Risk and Continue**
+- Edge: click **Advanced → Continue to localhost (unsafe)**
+
 **Container exits immediately**
-- Ensure `USE_ENV_CONFIG=true` is set — without it the app waits for interactive input and exits
+- Ensure `USE_ENV_CONFIG=true` is set
 - Check logs: `docker logs eve-data-aggregator`
 
 **Database connection refused**
-- Confirm MySQL is running: `netstat -tlnp | grep 3306`
-- Verify `DB_HOST=127.0.0.1` (host networking means this reaches the Unraid host)
+- Check MySQL started inside the container: `docker logs eve-data-aggregator | grep -i mysql`
+- Bundled MySQL needs 10–20 seconds on first boot — wait for "MySQL is ready" in logs
+
+**First boot takes a long time**
+- Normal — MySQL initialises the data directory, runs all schema scripts, creates users
+- Subsequent starts are fast (init is skipped when data volume already exists)
 
 **Passwords appear blank in Unraid edit form**
-- Normal behaviour — Unraid masks `Mask=true` fields in the UI
-- Values are correctly stored in `/boot/config/plugins/dockerMan/templates-user/my-eve-data-aggregator.xml`
+- Normal — Unraid masks `Mask=true` fields in the UI
+- Values are stored in `/boot/config/plugins/dockerMan/templates-user/my-eve-data-aggregator.xml`
 
-**"Check for Updates" shows "not available"**
-- Use `docker pull` to check manually — see update instructions above
-- Unraid's update checker is unreliable for manually added containers
+**Token polling — "No token found" spam in logs**
+- Fixed in latest version. If you see it, pull the latest image.
 
 **ESI rate limit warnings in logs**
-- The client automatically throttles and pauses when limits are low
+- The client automatically throttles — this is normal under heavy load
 - If persistent: increase `RUN_INTERVAL_MINUTES` or disable some jobs
 
 ---
