@@ -47,3 +47,14 @@ INSERT INTO KryTek.wallets (Id, Name) VALUES
 (6, 'unused 2'),
 (7, 'unused 3');
 
+
+-- Insert the data
+INSERT INTO S0b_Mart.wallets (Id, Name) VALUES
+(1, 'Master Wallet - Moon Goo'),
+(2, 'Seeding'),
+(3, 'Unused 3'),
+(4, 'Unused 4'),
+(5, 'Unused 5'),
+(6, 'Unused 6'),
+(7, 'Unused 7');
+

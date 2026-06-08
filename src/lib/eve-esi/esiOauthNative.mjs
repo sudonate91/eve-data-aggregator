@@ -40,7 +40,6 @@ export async function runOAuthFlow(job, sequelizeInstance) {
     job,
     sequelizeInstance,
   );
-  await upsertAuthData(authData, job, sequelizeInstance);
   return authData;
 }
 

@@ -172,4 +172,47 @@ SELECT je.amount, je.balance, je.context_id, je.context_id_type, je.date, je.des
        je.first_party_id, je.id, je.reason, je.ref_type, je.second_party_id, 
        je.wallet_division, je.transaction_type, je.unique_id,
        CAST(je.date AS DATE) AS entry_date, w.Name AS wallet_division_name, 'KryTek Armaments' AS corporation
-FROM KryTek.7_journal_entries AS je JOIN KryTek.wallets AS w ON je.wallet_division = w.Id;
+FROM KryTek.7_journal_entries AS je JOIN KryTek.wallets AS w ON je.wallet_division = w.Id
+-- S0b-Mart
+UNION ALL
+SELECT je.amount, je.balance, je.context_id, je.context_id_type, je.date, je.description, 
+       je.first_party_id, je.id, je.reason, je.ref_type, je.second_party_id, 
+       je.wallet_division, je.transaction_type, je.unique_id,
+       CAST(je.date AS DATE) AS entry_date, w.Name AS wallet_division_name, 'S0b-Mart' AS corporation
+FROM S0b_Mart.1_journal_entries AS je JOIN S0b_Mart.wallets AS w ON je.wallet_division = w.Id
+UNION ALL
+SELECT je.amount, je.balance, je.context_id, je.context_id_type, je.date, je.description, 
+       je.first_party_id, je.id, je.reason, je.ref_type, je.second_party_id, 
+       je.wallet_division, je.transaction_type, je.unique_id,
+       CAST(je.date AS DATE) AS entry_date, w.Name AS wallet_division_name, 'S0b-Mart' AS corporation
+FROM S0b_Mart.2_journal_entries AS je JOIN S0b_Mart.wallets AS w ON je.wallet_division = w.Id
+UNION ALL
+SELECT je.amount, je.balance, je.context_id, je.context_id_type, je.date, je.description, 
+       je.first_party_id, je.id, je.reason, je.ref_type, je.second_party_id, 
+       je.wallet_division, je.transaction_type, je.unique_id,
+       CAST(je.date AS DATE) AS entry_date, w.Name AS wallet_division_name, 'S0b-Mart' AS corporation
+FROM S0b_Mart.3_journal_entries AS je JOIN S0b_Mart.wallets AS w ON je.wallet_division = w.Id
+UNION ALL
+SELECT je.amount, je.balance, je.context_id, je.context_id_type, je.date, je.description, 
+       je.first_party_id, je.id, je.reason, je.ref_type, je.second_party_id, 
+       je.wallet_division, je.transaction_type, je.unique_id,
+       CAST(je.date AS DATE) AS entry_date, w.Name AS wallet_division_name, 'S0b-Mart' AS corporation
+FROM S0b_Mart.4_journal_entries AS je JOIN S0b_Mart.wallets AS w ON je.wallet_division = w.Id
+UNION ALL
+SELECT je.amount, je.balance, je.context_id, je.context_id_type, je.date, je.description, 
+       je.first_party_id, je.id, je.reason, je.ref_type, je.second_party_id, 
+       je.wallet_division, je.transaction_type, je.unique_id,
+       CAST(je.date AS DATE) AS entry_date, w.Name AS wallet_division_name, 'S0b-Mart' AS corporation
+FROM S0b_Mart.5_journal_entries AS je JOIN S0b_Mart.wallets AS w ON je.wallet_division = w.Id
+UNION ALL
+SELECT je.amount, je.balance, je.context_id, je.context_id_type, je.date, je.description, 
+       je.first_party_id, je.id, je.reason, je.ref_type, je.second_party_id, 
+       je.wallet_division, je.transaction_type, je.unique_id,
+       CAST(je.date AS DATE) AS entry_date, w.Name AS wallet_division_name, 'S0b-Mart' AS corporation
+FROM S0b_Mart.6_journal_entries AS je JOIN S0b_Mart.wallets AS w ON je.wallet_division = w.Id
+UNION ALL
+SELECT je.amount, je.balance, je.context_id, je.context_id_type, je.date, je.description, 
+       je.first_party_id, je.id, je.reason, je.ref_type, je.second_party_id, 
+       je.wallet_division, je.transaction_type, je.unique_id,
+       CAST(je.date AS DATE) AS entry_date, w.Name AS wallet_division_name, 'S0b-Mart' AS corporation
+FROM S0b_Mart.7_journal_entries AS je JOIN S0b_Mart.wallets AS w ON je.wallet_division = w.Id;
