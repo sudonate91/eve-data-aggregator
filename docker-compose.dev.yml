@@ -1,39 +1,68 @@
-# Development override — use with:
+# Development compose — standalone file for local dev.
 #
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Usage:
+#   npm run db:dev          — start MySQL only (use node locally)
+#   npm run compose:dev     — start MySQL + app together
+#   npm run compose:down    — stop everything
 #
-# Or add a shell alias (see README dev section).
-#
-# What this changes vs production:
-#   - app uses the 'development' Dockerfile target (includes devDependencies)
-#   - app source is volume-mounted so edits take effect without rebuild
-#   - app restarts automatically on crash (nodemon not required; just re-run)
-#   - MySQL port also exposed on 3307 for Workbench/TablePlus (already in base)
-#   - restart policy is 'no' for app — crashes stop cleanly, you re-run manually
-#   - DB uses a separate named volume (eve-mysql-dev-data) so dev data is
-#     isolated from any prod/Unraid data and can be wiped independently
-
-version: '3.8'
+# Dev vs prod:
+#   - Separate MySQL sidecar (mysql:8.4 image) — fast init, no Ubuntu overhead
+#   - Node-only Alpine app image — fast rebuilds
+#   - Source volume-mounted — edit files, re-run node, no rebuilds needed
+#   - Isolated dev data volume (eve-mysql-dev-data) — wipe freely
+#   - DB_HOST=eve-mysql (internal docker network) or 127.0.0.1 (native node)
 
 services:
   eve-mysql:
+    image: mysql:8.4
     container_name: eve-mysql-dev
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-devroot}
+      MYSQL_DATABASE: S0b
+      MYSQL_USER: ${DB_USER:-S0b_Admin}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-devpassword}
+      MYSQL_READONLY_PASSWORD: ${MYSQL_READONLY_PASSWORD:-${DB_PASSWORD:-devpassword}}
+    ports:
+      - "3307:3306"
     volumes:
       - eve-mysql-dev-data:/var/lib/mysql
       - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - eve-dev-network
+    restart: "no"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-devroot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   app:
     build:
+      context: .
+      dockerfile: Dockerfile
       target: development
     container_name: eve-data-aggregator-dev
+    depends_on:
+      eve-mysql:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
     volumes:
-      # Live source mount — edit files locally, changes are immediate
       - .:/app
-      # Prevent host node_modules from overwriting container's
       - /app/node_modules
+    networks:
+      - eve-dev-network
     restart: "no"
     environment:
       - NODE_ENV=development
+      - AUTH_PORT=3000
+      - DB_HOST=eve-mysql
+      - DB_PORT=3306
+
+networks:
+  eve-dev-network:
+    driver: bridge
 
 volumes:
   eve-mysql-dev-data:

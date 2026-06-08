@@ -3,7 +3,7 @@
   <Name>eve-data-aggregator</Name>
   <Repository>sudonate91/eve-data-aggregator:latest</Repository>
   <Registry>https://hub.docker.com/r/sudonate91/eve-data-aggregator</Registry>
-  <Network>eve-network</Network>
+  <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
@@ -11,7 +11,7 @@
   <Project>https://github.com/sudonate91/eve-data-aggregator</Project>
   <Overview>EVE Online Data Aggregator - CLI tool for importing corporation wallet and contract data from EVE Online ESI API to MySQL databases.</Overview>
   <Category>Tools:</Category>
-  <WebUI/>
+  <WebUI>http://[IP]:[PORT:3000]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/unraid-template.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/icon.png</Icon>
   <ExtraParams></ExtraParams>
@@ -20,8 +20,11 @@
   <DateInstalled></DateInstalled>
   <DonateText/>
   <DonateLink/>
-  <Requires>Install the eve-mysql container first. Both containers must use the eve-network custom network. Set CALLBACK_URL to http://&lt;unraid-ip&gt;:3000/callback and add that same URL to your EVE ESI application's callback list.</Requires>
-  <Config Name="Auth Web UI Port" Target="AUTH_PORT" Default="3000" Mode="tcp" Description="Port for the auth web UI. Open http://&lt;unraid-ip&gt;:3000 in a browser to authenticate each corp after first install." Type="Port" Display="always" Required="true" Mask="false"/>
+  <Requires>MySQL and the app run inside this single container. No separate MySQL container needed. After first install, open the Web UI (port 3000) to authenticate corps and optionally import existing data. Add http://&lt;unraid-ip&gt;:3000/callback to your EVE ESI application callback list.</Requires>
+  <Config Name="Auth Web UI Port" Target="AUTH_PORT" Default="3000" Mode="tcp" Description="Port for the setup &amp; auth web UI. Open http://&lt;unraid-ip&gt;:3000 after first install." Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="MySQL External Port" Target="3307" Default="3307" Mode="tcp" Description="External port for MySQL — connect Workbench or PowerBI to &lt;unraid-ip&gt;:3307" Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="MySQL Root Password" Target="MYSQL_ROOT_PASSWORD" Default="" Mode="" Description="MySQL root password — used for init, migration import, and Workbench root access. Keep it safe." Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="MySQL Readonly Password" Target="MYSQL_READONLY_PASSWORD" Default="" Mode="" Description="Password for the eve_readonly PowerBI user. If blank, DB_PASSWORD is used." Type="Variable" Display="always" Required="false" Mask="true"/>
   <Config Name="EVE Client ID" Target="CLIENT_ID" Default="" Mode="" Description="Your EVE Online ESI Application Client ID" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Callback URL" Target="CALLBACK_URL" Default="" Mode="" Description="OAuth callback URL — must match your ESI app AND point to this container. Set to http://&lt;unraid-ip&gt;:3000/callback" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="ESI Scope" Target="SCOPE" Default="esi-wallet.read_corporation_wallets.v1 esi-contracts.read_corporation_contracts.v1" Mode="" Description="ESI API scopes (space-separated)" Type="Variable" Display="always" Required="true" Mask="false"/>
@@ -32,7 +35,7 @@
   <Config Name="KryTek Corporation ID" Target="KRYTEK_CORPORATION_ID" Default="" Mode="" Description="KryTek corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="S0b Mart Corporation ID" Target="S0B_MART_CORPORATION_ID" Default="" Mode="" Description="S0b Mart corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Janice API Key" Target="JANICE_API_KEY" Default="" Mode="" Description="Janice API key for price checking" Type="Variable" Display="always" Required="false" Mask="true"/>
-  <Config Name="Database Host" Target="DB_HOST" Default="eve-mysql" Mode="" Description="MySQL container hostname. Use 'eve-mysql' if using the bundled eve-mysql container (recommended). Use an IP if connecting to an external MySQL." Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Database Host" Target="DB_HOST" Default="127.0.0.1" Mode="" Description="MySQL host — leave as 127.0.0.1 (MySQL runs inside this container)." Type="Variable" Display="advanced" Required="true" Mask="false"/>
   <Config Name="Database User" Target="DB_USER" Default="" Mode="" Description="MySQL database username" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Database Password" Target="DB_PASSWORD" Default="" Mode="" Description="MySQL database password" Type="Variable" Display="always" Required="true" Mask="true"/>
   <Config Name="Main Database Name" Target="DB_NAME" Default="S0b" Mode="" Description="Main database name" Type="Variable" Display="always" Required="true" Mask="false"/>
@@ -41,7 +44,7 @@
   <Config Name="KryTek Database Name" Target="KRYTEK_DB_NAME" Default="KryTek" Mode="" Description="KryTek database name" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="S0b Mart Database Name" Target="S0B_MART_DB_NAME" Default="S0b_Mart" Mode="" Description="S0b Mart database name" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Database Root User" Target="ROOT_USER" Default="root" Mode="" Description="MySQL root username (for admin operations)" Type="Variable" Display="advanced" Required="false" Mask="false"/>
-  <Config Name="Database Root Password" Target="ROOT_PASSWORD" Default="" Mode="" Description="MySQL root password. Must match MYSQL_ROOT_PASSWORD set on the eve-mysql container." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="Database Root Password" Target="ROOT_PASSWORD" Default="" Mode="" Description="Must match MYSQL_ROOT_PASSWORD above." Type="Variable" Display="advanced" Required="false" Mask="true"/>
   <Config Name="Use Environment Config" Target="USE_ENV_CONFIG" Default="true" Mode="" Description="Set to 'true' to use environment variables instead of interactive prompts (required for Docker/Unraid)" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Run Interval (Minutes)" Target="RUN_INTERVAL_MINUTES" Default="60" Mode="" Description="Interval in minutes to repeat jobs (0 or empty for single run)" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Enable S0b Wallet Import" Target="ENABLE_S0B_WALLET" Default="true" Mode="" Description="Enable S0b Holdings wallet data import" Type="Variable" Display="always" Required="false" Mask="false"/>

@@ -1,51 +1,16 @@
-version: '3.8'
-
 services:
-  # ── MySQL database ──────────────────────────────────────────────────────────
-  eve-mysql:
-    image: mysql:8.4
-    container_name: eve-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: S0b
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      # Optional: separate read-only password for PowerBI/reporting.
-      # If not set, eve_readonly gets the same password as DB_PASSWORD.
-      MYSQL_READONLY_PASSWORD: ${MYSQL_READONLY_PASSWORD:-${DB_PASSWORD}}
-    ports:
-      # Host port 3307 avoids conflicts with any existing MySQL on 3306.
-      # Connect MySQL Workbench / TablePlus to <host-ip>:3307 to browse data.
-      - "3307:3306"
-    volumes:
-      # Named volume — data survives container removal and image updates.
-      # Only wiped by: docker compose down -v  (never happens accidentally).
-      - eve-mysql-data:/var/lib/mysql
-      # Init scripts run once on first start when the volume is empty.
-      - ./db/init:/docker-entrypoint-initdb.d:ro
-    networks:
-      - eve-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
-  # ── Application ─────────────────────────────────────────────────────────────
+  # ── Single container: MySQL 8.4 + Node.js app bundled together ──────────────
   app:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
     container_name: eve-data-aggregator
-    depends_on:
-      eve-mysql:
-        condition: service_healthy
     ports:
-      # Auth web UI — open http://<host-ip>:3000 to authenticate corps
+      # Auth + setup web UI — open http://<host-ip>:3000 after first install
       - "3000:3000"
+      # External MySQL access for Workbench / PowerBI — avoids conflict with host MySQL
+      - "3307:3306"
     environment:
       - AUTH_PORT=3000
       - CLIENT_ID=${CLIENT_ID}
@@ -58,8 +23,9 @@ services:
       - KRYTEK_CORPORATION_ID=${KRYTEK_CORPORATION_ID}
       - S0B_MART_CORPORATION_ID=${S0B_MART_CORPORATION_ID}
       - JANICE_API_KEY=${JANICE_API_KEY}
-      # App connects to the MySQL container by service name on the bridge network
-      - DB_HOST=eve-mysql
+      # MySQL runs inside the same container — connect on localhost
+      - DB_HOST=127.0.0.1
+      - DB_PORT=3306
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME:-S0b}
@@ -67,6 +33,8 @@ services:
       - VEN0M_DB_NAME=${VEN0M_DB_NAME:-Ven0m}
       - KRYTEK_DB_NAME=${KRYTEK_DB_NAME:-KryTek}
       - S0B_MART_DB_NAME=${S0B_MART_DB_NAME:-S0b_Mart}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_READONLY_PASSWORD=${MYSQL_READONLY_PASSWORD:-${DB_PASSWORD}}
       - ROOT_USER=root
       - ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - USE_ENV_CONFIG=${USE_ENV_CONFIG:-true}
@@ -78,13 +46,11 @@ services:
       - ENABLE_S0B_MART_WALLET=${ENABLE_S0B_MART_WALLET:-false}
       - ENABLE_S0B_STRUCT_CONTRACTS=${ENABLE_S0B_STRUCT_CONTRACTS:-false}
       - ENABLE_CSV_IMPORT=${ENABLE_CSV_IMPORT:-false}
-    networks:
-      - eve-network
+    volumes:
+      # Named volume — MySQL data persists across container removal and image updates.
+      # Only wiped by: docker compose down -v  (never happens accidentally).
+      - eve-mysql-data:/var/lib/mysql
     restart: unless-stopped
-
-networks:
-  eve-network:
-    driver: bridge
 
 volumes:
   # Named volume for MySQL data persistence.
