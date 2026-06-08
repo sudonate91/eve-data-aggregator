@@ -14,7 +14,7 @@
   <WebUI/>
   <TemplateURL>https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/unraid-template.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/icon.png</Icon>
-  <ExtraParams>-it</ExtraParams>
+  <ExtraParams></ExtraParams>
   <PostArgs/>
   <CPUset/>
   <DateInstalled></DateInstalled>
