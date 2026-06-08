@@ -1,0 +1,49 @@
+# Node modules
+node_modules
+npm-debug.log
+
+# Git
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Environment files (will be mounted or passed at runtime)
+.env
+.env.*
+
+# Test files
+coverage
+.nyc_output
+
+# Build files
+dist
+build
+
+# CSV/Excel files (large data files)
+*.csv
+*.xlsx
+
+# Misc
+.eslintcache
+.stylelintcache
+.cache
+.temp

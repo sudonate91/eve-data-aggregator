@@ -1,6 +1,12 @@
-# eve-data-aggregator
+# EVE Data Aggregator
 
-My Node CLI is a tool for doing awesome things directly from your terminal.
+A CLI tool for importing EVE Online corporation wallet and contract data from the ESI API to MySQL databases.
+
+## Deployment Options
+
+- **🐳 [Docker Deployment](DOCKER.md)** - Run with Docker or Docker Compose
+- **🖥️ [Unraid Deployment](UNRAID.md)** - Deploy on Unraid with WebUI configuration (Recommended for Unraid users)
+- **📦 Native Node.js** - Install and run directly with Node.js (see below)
 
 ## Prerequisites
 
@@ -34,33 +40,67 @@ npm install -g eve-import-cli
 
 ## Configuration
 
-Create a [`.env`](command:_github.copilot.openRelativePath?%5B%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2Fg%3A%2Fdev%2Feve-data-aggregator%2F.env%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%2C%223ae6d9ce-4472-4b17-b2c2-65e065dcc6d2%22%5D 'g:\\dev\\eve-data-aggregator.env')) file in the root of your project with the following content:
+### For Docker/Unraid Users
+See [DOCKER.md](DOCKER.md) or [UNRAID.md](UNRAID.md) for deployment-specific configuration.
+
+### For Native Node.js
+Create a `.env` file in the root of your project (use `.env.example` as a template):
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your configuration:
 
 ```env
 CLIENT_ID=your-client-id
 CALLBACK_URL=https://localhost/callback/
-SCOPE=esi-wallet.read_corporation_wallets.v1
+SCOPE="esi-wallet.read_corporation_wallets.v1 esi-contracts.read_corporation_contracts.v1"
 STATE=unique-state
 CORPORATION_ID=your-corporation-id
+# ... see .env.example for all options
 ```
 
-### Global Installation
+### Database Setup
 
-If you have installed the CLI globally, place the [`.env`](command:_github.copilot.openRelativePath?%5B%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2Fg%3A%2Fdev%2Feve-data-aggregator%2F.env%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%2C%228288c46c-d8df-4ec9-9a0a-e608e3c74057%22%5D 'g:\\dev\\eve-data-aggregator.env') file in the directory where you run the [`eve-import-cli`](command:_github.copilot.openSymbolFromReferences?%5B%22%22%2C%5B%7B%22uri%22%3A%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2Fg%3A%2Fdev%2Feve-data-aggregator%2Fpackage.json%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%2C%22pos%22%3A%7B%22line%22%3A24%2C%22character%22%3A5%7D%7D%5D%2C%228288c46c-d8df-4ec9-9a0a-e608e3c74057%22%5D 'Go to definition') command. This ensures that the environment variables are correctly loaded.
+Ensure your MySQL database server is running and accessible. The application supports multiple corporation databases:
+- Main corporation database (S0b)
+- Structure management database (S0b_Struct)
+- Additional corporation databases (Ven0m, KryTek, S0b_Mart)
 
 ## Usage
 
-To start using My Node CLI, run:
+### Docker/Unraid
+See deployment-specific guides:
+- [DOCKER.md](DOCKER.md) - Docker commands and configuration
+- [UNRAID.md](UNRAID.md) - Unraid WebUI deployment
 
+### Native Node.js
+
+Start the CLI:
 ```bash
-eve-import-cli --help
+node bin/index.mjs
 ```
 
-### Commands
+Or if installed globally:
+```bash
+eve-import-cli
+```
 
-- `eve-import-cli repeat --interval <minutes>`: Repeats the OAuth flow at specified intervals.
+The application will:
+1. Connect to your databases
+2. Prompt you to select which jobs to run
+3. Ask for an interval if you want recurring imports
+4. Execute the selected jobs
 
-For more detailed information on commands, run `eve-import-cli --help`.
+### Features
+
+- **Interactive Job Selection** - Choose which corporation data to import
+- **OAuth Flow** - Secure EVE Online SSO authentication
+- **Wallet Import** - Import corporation wallet transactions
+- **Contract Import** - Import corporation contracts
+- **Scheduled Execution** - Run jobs at regular intervals
+- **Multi-Corporation Support** - Manage multiple corporations
 
 ## Contributing
 
