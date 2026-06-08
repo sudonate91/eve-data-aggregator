@@ -131,12 +131,26 @@ The stack includes a bundled MySQL 8.4 container (`eve-mysql`). You do not need 
 - Data is stored in a named Docker volume `eve-mysql-data` — survives container removal and image updates
 - Schema and databases are created automatically on first start via `db/init/` scripts
 
-### Port 3307 — connecting Workbench / TablePlus
+### Port 3307 — connecting Workbench / TablePlus / PowerBI
 
-To browse data externally, add a new connection in MySQL Workbench or TablePlus:
-- **Hostname:** `<your-unraid-ip>` (or `127.0.0.1` for local)
-- **Port:** `3307`
-- **Username:** `S0b_Admin` (or `root`)
+A read-only user `eve_readonly` is created automatically on first container start. Use this for PowerBI and any reporting tools — it has `SELECT` only, no ability to modify data.
+
+| Setting | Value |
+|---|---|
+| Host | `<your-unraid-ip>` |
+| Port | `3307` |
+| Username | `eve_readonly` |
+| Password | value of `MYSQL_READONLY_PASSWORD` env var on `eve-mysql` container |
+
+> **Simplest setup:** leave `MYSQL_READONLY_PASSWORD` blank — `eve_readonly` will get the same password as `DB_PASSWORD`. One password to remember, two users.
+
+**PowerBI Desktop → Get Data → MySQL database:**
+- Server: `<unraid-ip>:3307`
+- Database: `S0b` (or whichever corp DB)
+- Username: `eve_readonly`
+- Password: as above
+
+For admin access (Workbench schema browsing), connect with `root` / `MYSQL_ROOT_PASSWORD` instead.
 
 ---
 

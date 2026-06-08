@@ -25,6 +25,8 @@
   <Config Name="MySQL Root Password" Target="MYSQL_ROOT_PASSWORD" Default="" Mode="" Description="Root password for the MySQL instance. Keep this safe — also used by db/migrate.sh for imports." Type="Variable" Display="always" Required="true" Mask="true"/>
   <Config Name="App DB User" Target="MYSQL_USER" Default="S0b_Admin" Mode="" Description="Database username the application will connect with." Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="App DB Password" Target="MYSQL_PASSWORD" Default="" Mode="" Description="Password for the application database user. Must match DB_PASSWORD in the app container." Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Read-Only Password (PowerBI)" Target="MYSQL_READONLY_PASSWORD" Default="" Mode="" Description="Password for the eve_readonly user used by PowerBI, Workbench, and reporting tools. If left blank, defaults to the App DB Password. Connect PowerBI to: Host=&lt;unraid-ip&gt; Port=3307 User=eve_readonly" Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="Default Database" Target="MYSQL_DATABASE" Default="S0b" Mode="" Description="Primary database name — MySQL creates this automatically on first start." Type="Variable" Display="advanced" Required="false" Mask="false"/>
 
   <Config Name="Host Port" Target="3306" Default="3307" Mode="tcp" Description="Host port mapped to MySQL. Use 3307 to avoid conflicts with any existing MySQL on 3306. Connect Workbench to &lt;unraid-ip&gt;:3307." Type="Port" Display="always" Required="true" Mask="false"/>
 

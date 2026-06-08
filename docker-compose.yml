@@ -7,8 +7,12 @@ services:
     container_name: eve-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: S0b
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
+      # Optional: separate read-only password for PowerBI/reporting.
+      # If not set, eve_readonly gets the same password as DB_PASSWORD.
+      MYSQL_READONLY_PASSWORD: ${MYSQL_READONLY_PASSWORD:-${DB_PASSWORD}}
     ports:
       # Host port 3307 avoids conflicts with any existing MySQL on 3306.
       # Connect MySQL Workbench / TablePlus to <host-ip>:3307 to browse data.
