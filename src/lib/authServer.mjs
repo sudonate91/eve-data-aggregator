@@ -339,6 +339,17 @@ async function handleMigrate(req, res) {
     ['-u', 'root', `-p${rootPw}`, '-h', host, '-P', String(port), '--verbose'],
     { stdio: ['pipe', 'pipe', 'pipe'] }
   );
+  mysql.on('error', (err) => {
+    if (err.code === 'ENOENT') {
+      res.write('\nERROR: mysql CLI not found on PATH.\n');
+      res.write('For local dev, import via MySQL Workbench instead:\n');
+      res.write(`  1. New connection: host 127.0.0.1, port ${port}, user root, password devroot\n`);
+      res.write('  2. Server -> Data Import -> select your .sql file -> Start Import\n');
+    } else {
+      res.write(`\nERROR: ${err.message}\n`);
+    }
+    res.end();
+  });
   mysql.stdout.on('data', d => res.write(d.toString()));
   mysql.stderr.on('data', d => {
     const line = d.toString();
