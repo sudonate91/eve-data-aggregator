@@ -1,4 +1,5 @@
 import { upsertJournalEntries } from '../service/transactionEntrieService.mjs';
+import { esiRequest } from '../../utils/esiClient.mjs';
 import chalk from 'chalk';
 
 export async function importWalletData(
@@ -27,7 +28,7 @@ export async function importWalletData(
       };
 
       try {
-        const res = await fetchWithRetry(walletPath, { headers: headers });
+        const res = await esiRequest(walletPath, { headers: headers });
         console.log(
           chalk.cyan(
             `\nMade request to ${walletPath} with headers: ${JSON.stringify(
@@ -38,17 +39,6 @@ export async function importWalletData(
             )}`,
           ),
         );
-
-        if (res.status === 500) {
-          const errorText = await res.text();
-          console.error(
-            chalk.red(
-              `Received 500 error for wallet division ${walletDivision}, page ${page}. Moving to next division. Error: ${errorText}`,
-            ),
-          );
-          hasMorePages = false;
-          continue;
-        }
 
         if (res.status === 404) {
           console.log(
@@ -61,10 +51,14 @@ export async function importWalletData(
         }
 
         if (!res.ok) {
-          const errorText = await res.text(); // Read the response body as text
-          throw new Error(
-            `HTTP error! status: ${res.status}, body: ${errorText}`,
+          const errorText = await res.text();
+          console.error(
+            chalk.red(
+              `HTTP error ${res.status} for wallet division ${walletDivision}, page ${page}: ${errorText}`,
+            ),
           );
+          hasMorePages = false;
+          continue;
         }
 
         const data = await res.json();
@@ -96,29 +90,4 @@ export async function importWalletData(
     }
   }
 }
-const fetchWithRetry = async (url, options, retries = 3) => {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(url, options);
-      if (res.status === 504) {
-        const body = await res.json();
-        if (
-          body.error === 'Timeout contacting tranquility' &&
-          body.timeout === 10
-        ) {
-          if (attempt < retries) {
-            console.log(`Retrying... Attempt ${attempt} of ${retries}`);
-            continue;
-          } else {
-            throw new Error(`Failed after ${retries} attempts`);
-          }
-        }
-      }
-      return res;
-    } catch (error) {
-      if (attempt >= retries) {
-        throw error;
-      }
-    }
-  }
-};
+// fetchWithRetry is now handled by esiClient.mjs
