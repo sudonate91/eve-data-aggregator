@@ -252,7 +252,7 @@ async function handleDashboard(req, res) {
 <script src="/app.js"></script>
 </body></html>`;
 
-  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
   res.end(html);
 }
 
@@ -268,20 +268,22 @@ async function handleDbStatus(req, res) {
   const results = await Promise.all(ALL_DBS.map(async (db) => {
     try {
       const sequelize = await DB_SEQUELIZE_MAP[db]();
-      const [[jRow], [tRow]] = await Promise.all([
+      const [jRows, tRows] = await Promise.all([
         sequelize.query('SELECT COUNT(*) AS cnt FROM `1_journal_entries`', { type: QueryTypes.SELECT }),
         sequelize.query('SELECT COUNT(*) AS cnt FROM `tokens`', { type: QueryTypes.SELECT }),
       ]);
-      let journalRows = Number(jRow.cnt);
+      let journalRows = Number(jRows[0]?.cnt ?? 0);
       let contractRows = 0;
       if (db === 'S0b_Struct') {
         try {
-          const [[cRow]] = await sequelize.query('SELECT COUNT(*) AS cnt FROM `contract`', { type: QueryTypes.SELECT });
-          contractRows = Number(cRow.cnt);
-        } catch { contractRows = -1; }
+          const cRows = await sequelize.query('SELECT COUNT(*) AS cnt FROM `contract`', { type: QueryTypes.SELECT });
+          contractRows = Number(cRows[0]?.cnt ?? 0);
+        } catch (cerr) { console.error(chalk.red(`[db-status] S0b_Struct contract error: ${cerr.message}`)); contractRows = -1; }
       }
-      return { db, journalRows, tokenRows: Number(tRow.cnt), contractRows: db === 'S0b_Struct' ? contractRows : null };
-    } catch {
+      const tokenRows = Number(tRows[0]?.cnt ?? 0);
+      return { db, journalRows, tokenRows, contractRows: db === 'S0b_Struct' ? contractRows : null };
+    } catch (err) {
+      console.error(chalk.red(`[db-status] ${db} error: ${err.message}`));
       return { db, journalRows: -1, tokenRows: -1, contractRows: null };
     }
   }));
@@ -408,7 +410,7 @@ async function startMigration(){
     btn.disabled=false;btn.textContent='Retry';
   }
 }`;
-  res.writeHead(200, { 'Content-Type': 'application/javascript' });
+  res.writeHead(200, { 'Content-Type': 'application/javascript', 'Cache-Control': 'no-store' });
   res.end(js);
 }
 
