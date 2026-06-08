@@ -154,6 +154,22 @@ For admin access (Workbench schema browsing), connect with `root` / `MYSQL_ROOT_
 
 ---
 
+### Before deploying to Unraid — seed your tokens locally first
+
+The containerized app **cannot do interactive OAuth** — there's no terminal to paste codes into. Tokens must exist in the database before the container starts.
+
+**Required one-time local setup:**
+1. Run `npm run db:dev` (starts local dev MySQL)
+2. Run `npm run dev` (interactive mode — `USE_ENV_CONFIG` can be `false` or omit it)
+3. Authenticate each enabled corp once — paste the codes as prompted
+4. Tokens are stored in each corp's `tokens` table in your local dev DB
+5. Export the full DB including tokens (Workbench Data Export or `db/migrate.sh`)
+6. Import into the Unraid `eve-mysql` container (Workbench Data Import on port 3307)
+
+Once tokens are in the container DB, the app refreshes them automatically on every run forever. If a token ever goes stale (container offline for months), the app will log a clear error and skip that corp rather than hanging silently.
+
+---
+
 ### Unraid — Install Order (Two Containers)
 
 Unraid doesn't use `docker-compose`. Install two separate containers via the template XML files.

@@ -9,21 +9,23 @@ import { findByJobName, upsertAuthData } from '../service/tokenService.mjs'; // 
 export async function runOAuthFlow(job, sequelizeInstance) {
   const existingToken = await findByJobName(job, sequelizeInstance);
   if (existingToken) {
-    const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds since epoch
+    const currentTime = Math.floor(Date.now() / 1000);
     console.log(chalk.blue(`Current time: ${currentTime}`));
     console.log(chalk.blue(`Token expiry time: ${existingToken.exp}`));
-    // if (existingToken.exp > currentTime) {
     console.log(
       chalk.green(`Token already exists and is valid for job: ${job}`),
     );
     return refreshToken(existingToken, job, sequelizeInstance);
-    // } else {
-    //   console.log(
-    //     chalk.yellow(
-    //       `Token for job: ${job} has expired. Starting OAuth flow to get a new token...`,
-    //     ),
-    //   );
-    // }
+  }
+
+  // No token found — in non-interactive (Docker/Unraid) mode we cannot prompt.
+  // Tokens must be seeded locally first, then migrated into the container DB.
+  if (process.env.USE_ENV_CONFIG === 'true') {
+    throw new Error(
+      `No token found for job: ${job}. ` +
+      `Run the app locally (npm run dev) to authenticate and seed the token, ` +
+      `then migrate the database to the container.`
+    );
   }
 
   const { codeVerifier, codeChallenge } = generateCodeVerifierAndChallenge();
