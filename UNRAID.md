@@ -1,132 +1,94 @@
 # Unraid Deployment Guide
 
-This guide explains how to deploy the EVE Data Aggregator on your Unraid server where your MySQL database is already running.
-
-## Overview
-
-On Unraid, all environment variables (.env configuration) will be managed through the Unraid WebUI when you add the Docker container. No manual .env file editing is required!
+The image is hosted on Docker Hub at `sudonate91/eve-data-aggregator:latest` and updated automatically via GitHub Actions on every push to `main`. No file transfers or local builds required.
 
 ## Prerequisites
 
-- Unraid server (6.9.0 or later recommended)
-- MySQL/MariaDB running on Unraid (or accessible from Unraid)
-- EVE Online ESI API credentials
-- SSH or terminal access to your Unraid server
+- Unraid 6.9.0 or later
+- MySQL/MariaDB running on Unraid (or accessible from it)
+- EVE Online ESI application credentials
 
-## Deployment Steps
+---
 
-### Step 1: Transfer Files to Unraid
+## First-Time Installation
 
-Transfer your project files to your Unraid server. You can use:
+### Step 1: Pull the image
 
-**Option A: Using SSH/SCP**
-```bash
-scp -r /path/to/eve-data-aggregator root@your-unraid-ip:/mnt/user/appdata/eve-data-aggregator
-```
-
-**Option B: Using Unraid SMB Share**
-1. Map your Unraid shares on your computer
-2. Copy the project folder to `/mnt/user/appdata/eve-data-aggregator`
-
-### Step 2: Build the Docker Image on Unraid
-
-SSH into your Unraid server and run:
+SSH into Unraid and run:
 
 ```bash
-cd /mnt/user/appdata/eve-data-aggregator
-docker build -t eve-data-aggregator:latest .
+docker pull sudonate91/eve-data-aggregator:latest
 ```
 
-This will create a local Docker image on your Unraid server.
+### Step 2: Add the container via WebUI
 
-### Step 3: Add Container via Unraid WebUI
-
-#### Option A: Using the Template (Recommended)
-
-1. **Copy the template file:**
-   ```bash
-   cp /mnt/user/appdata/eve-data-aggregator/unraid-template.xml /boot/config/plugins/dockerMan/templates-user/eve-data-aggregator.xml
+1. Go to **Docker** tab → **Add Container**
+2. Set **Repository** to:
    ```
+   sudonate91/eve-data-aggregator:latest
+   ```
+3. Set **Network Type** to `Host`
+4. Set **Extra Parameters** to `-it`
+5. Add the following environment variables:
 
-2. **Refresh Docker page:**
-   - Go to Unraid WebUI → Docker tab
-   - Click "Add Container"
-   - Select "eve-data-aggregator" from the template dropdown
+| Variable | Description | Required |
+|---|---|---|
+| `CLIENT_ID` | EVE ESI application Client ID | Yes |
+| `CALLBACK_URL` | OAuth callback URL (must match ESI app) | Yes |
+| `SCOPE` | ESI scopes (space-separated) | Yes |
+| `STATE` | OAuth state string | Yes |
+| `CORPORATION_ID` | Main corporation ID | Yes |
+| `STRUCT_CORPORATION_ID` | Structure management corp ID | No |
+| `VEN0M_CORPORATION_ID` | Ven0m corp ID | No |
+| `KRYTEK_CORPORATION_ID` | KryTek corp ID | No |
+| `S0B_MART_CORPORATION_ID` | S0b-Mart corp ID | No |
+| `JANICE_API_KEY` | Janice API key for item pricing | No |
+| `DB_HOST` | MySQL host IP | Yes |
+| `DB_USER` | MySQL username | Yes |
+| `DB_PASSWORD` | MySQL password | Yes |
+| `DB_NAME` | Main database name | Yes |
+| `S0b_STRUCT_DB_NAME` | Struct database name | No |
+| `VEN0M_DB_NAME` | Ven0m database name | No |
+| `KRYTEK_DB_NAME` | KryTek database name | No |
+| `S0B_MART_DB_NAME` | S0b-Mart database name | No |
+| `USE_ENV_CONFIG` | Set to `true` (required for non-interactive mode) | Yes |
+| `RUN_INTERVAL_MINUTES` | How often to run jobs in minutes (default: `60`) | No |
+| `ENABLE_S0B_WALLET` | Enable S0b Holdings wallet import | No |
+| `ENABLE_S0B_STRUCT_WALLET` | Enable S0b Struct wallet import | No |
+| `ENABLE_VEN0M_WALLET` | Enable Ven0m wallet import | No |
+| `ENABLE_KRYTEK_WALLET` | Enable KryTek wallet import | No |
+| `ENABLE_S0B_MART_WALLET` | Enable S0b-Mart wallet import | No |
+| `ENABLE_S0B_STRUCT_CONTRACTS` | Enable S0b Struct contracts import | No |
 
-3. **Configure environment variables** through the WebUI:
-   - All your configuration options will appear as form fields
-   - Fill in your EVE Online credentials
-   - Set database connection details
-   - For `DB_HOST`, use:
-     - `localhost` or `127.0.0.1` if MySQL is on Unraid
-     - Or your database server IP if it's elsewhere
+6. Click **Apply**
 
-4. **Apply** to create and start the container
+> **DB_HOST note:** The container uses host networking, so `localhost` / `127.0.0.1` will reach services running on the Unraid host directly.
 
-#### Option B: Manual Configuration
+---
 
-If the template doesn't appear, manually add the container:
+## Updating to a New Version
 
-1. Go to **Docker** tab in Unraid WebUI
-2. Click **Add Container**
-3. Configure:
-   - **Name:** `eve-data-aggregator`
-   - **Repository:** `eve-data-aggregator:latest`
-   - **Network Type:** `Host`
-   - **Console shell command:** `sh`
-   - **Extra Parameters:** `-it`
+When a new version is pushed to `main`, GitHub Actions automatically builds and pushes a new image to Docker Hub.
 
-4. Add environment variables by clicking **Add another Path, Port, Variable, Label or Device**:
+### Option A: Unraid WebUI (easiest)
 
-   | Variable Name | Key | Default/Example | Required |
-   |--------------|-----|-----------------|----------|
-   | EVE Client ID | CLIENT_ID | your-client-id | Yes |
-   | Callback URL | CALLBACK_URL | https://localhost/callback/ | Yes |
-   | ESI Scope | SCOPE | esi-wallet.read_corporation_wallets.v1 esi-contracts.read_corporation_contracts.v1 | Yes |
-   | OAuth State | STATE | unique-state | Yes |
-   | Main Corporation ID | CORPORATION_ID | your-corp-id | Yes |
-   | Structure Corp ID | STRUCT_CORPORATION_ID | | No |
-   | Ven0m Corp ID | VEN0M_CORPORATION_ID | | No |
-   | KryTek Corp ID | KRYTEK_CORPORATION_ID | | No |
-   | S0b Mart Corp ID | S0B_MART_CORPORATION_ID | | No |
-   | Janice API Key | JANICE_API_KEY | | No |
-   | Database Host | DB_HOST | 127.0.0.1 | Yes |
-   | Database User | DB_USER | S0b_Admin | Yes |
-   | Database Password | DB_PASSWORD | | Yes |
-   | Main Database Name | DB_NAME | S0b | Yes |
-   | Struct DB Name | S0b_STRUCT_DB_NAME | S0b_Struct | No |
-   | Ven0m DB Name | VEN0M_DB_NAME | Ven0m | No |
-   | KryTek DB Name | KRYTEK_DB_NAME | KryTek | No |
-   | S0b Mart DB Name | S0B_MART_DB_NAME | S0b_Mart | No |
-   | Root User | ROOT_USER | root | No |
-   | Root Password | ROOT_PASSWORD | | No |
+1. Docker tab → find `eve-data-aggregator`
+2. Click **Check for Updates** (or wait for Unraid's scheduled check)
+3. When an update is available, click **Update**
 
-5. **Apply** to create the container
+All your saved environment variables are preserved automatically.
 
-### Step 4: Running the Container
+### Option B: SSH
 
-Since this is an interactive CLI application:
+```bash
+docker pull sudonate91/eve-data-aggregator:latest
+docker stop eve-data-aggregator
+docker rm eve-data-aggregator
+```
 
-1. **Start the container** from the Docker tab (if not already running)
-2. **Access the console:**
-   - Click the container icon → **Console**
-   - The interactive prompts will appear in the console window
-3. **Follow the prompts** to select which jobs to run
+Then recreate the container from the WebUI — your saved template values will pre-populate.
 
-## Database Connection
-
-### If MySQL is Running on Unraid
-
-Set `DB_HOST` to:
-- `localhost`
-- `127.0.0.1`
-- Or the Unraid server's IP address
-
-The container uses **host networking mode**, so it can access services on the Unraid host directly.
-
-### If MySQL is on Another Server
-
-Simply use that server's IP address for `DB_HOST`.
+---
 
 ## Managing the Container
 
@@ -134,133 +96,49 @@ Simply use that server's IP address for `DB_HOST`.
 ```bash
 docker logs eve-data-aggregator
 ```
+Or: Docker tab → container icon → **Log**
 
-Or use the Unraid WebUI: Docker tab → Container → Logs
+### Edit Configuration
+1. Docker tab → container icon → **Edit**
+2. Change any environment variables
+3. Click **Apply** — container recreates with new values, image unchanged
 
-### Restart Container
+### Restart
 ```bash
 docker restart eve-data-aggregator
 ```
 
-Or use the Unraid WebUI: Docker tab → Container icon → Restart
-
-### Update Configuration
-
-1. Go to Docker tab in Unraid WebUI
-2. Click the container icon → **Edit**
-3. Modify any environment variables
-4. Click **Apply** (this recreates the container with new settings)
-
-### Stop/Remove Container
-```bash
-docker stop eve-data-aggregator
-docker rm eve-data-aggregator
-```
-
-Or use the Unraid WebUI Docker controls.
-
-## Rebuilding After Code Changes
-
-If you update your application code:
-
-```bash
-cd /mnt/user/appdata/eve-data-aggregator
-docker stop eve-data-aggregator
-docker rm eve-data-aggregator
-docker build -t eve-data-aggregator:latest .
-```
-
-Then recreate the container through the WebUI using your saved template/settings.
-
-## Scheduled Execution
-
-To run the container on a schedule:
-
-### Option A: User Scripts Plugin
-
-1. Install the **User Scripts** plugin from Community Applications
-2. Create a new script:
-   ```bash
-   #!/bin/bash
-   docker start eve-data-aggregator
-   ```
-3. Set a schedule (e.g., daily at 2 AM)
-
-### Option B: Cron Job
-
-1. Edit Unraid cron:
-   ```bash
-   crontab -e
-   ```
-2. Add a schedule:
-   ```
-   0 2 * * * docker start eve-data-aggregator
-   ```
+---
 
 ## Troubleshooting
 
-### Container Exits Immediately
-
-The application is interactive and requires console access. To keep it running:
-- Access via Console in Unraid WebUI
-- Or modify the application to run in daemon mode
+### "Not available" on Check for Updates
+The image was built locally and has no Docker Hub digest. Fix:
+```bash
+docker pull sudonate91/eve-data-aggregator:latest
+```
+Then stop/remove the old container and re-add it from the WebUI.
 
 ### Database Connection Refused
+- Confirm MySQL is running and accessible: `netstat -tlnp | grep 3306`
+- Verify `DB_HOST`, `DB_USER`, `DB_PASSWORD` in the container's environment
+- Host networking mode means `127.0.0.1` reaches the Unraid host
 
-- Verify MySQL is running: `docker ps | grep mysql` or check your database container
-- Check MySQL is listening on the correct port: `netstat -tlnp | grep 3306`
-- Verify database credentials in container environment variables
-- Ensure MySQL allows connections from Docker containers
+### Container Exits Immediately
+- Ensure `USE_ENV_CONFIG=true` is set — without it the app waits for interactive input and exits
+- Check logs: `docker logs eve-data-aggregator`
 
-### Can't Access Container Console
-
-- Make sure the container has `-it` in Extra Parameters
-- Try accessing via command line:
-  ```bash
-  docker exec -it eve-data-aggregator sh
-  ```
-
-### Permission Issues
-
-If you see file permission errors:
-```bash
-cd /mnt/user/appdata/eve-data-aggregator
-chmod -R 755 .
-chown -R 99:100 .  # Unraid nobody:users
+### Passwords Appear Blank in Edit Form
+This is normal — Unraid masks fields with `Mask=true` in the template. The values are stored in:
 ```
-
-## Advanced: Docker Compose on Unraid
-
-Alternatively, you can use docker-compose (requires Docker Compose plugin):
-
-```bash
-cd /mnt/user/appdata/eve-data-aggregator
-docker-compose up -d
+/boot/config/plugins/dockerMan/templates-user/my-eve-data-aggregator.xml
 ```
+The container uses the correct values even when the form shows them blank.
 
-The docker-compose.yml is already configured for host networking mode.
+---
 
-## Updating Environment Variables Without Rebuilding
+## Security
 
-Environment variables are container configuration, not image configuration. To update them:
-
-1. Stop the container
-2. Edit via WebUI (Docker → Edit)
-3. Change the environment variable values
-4. Apply (this recreates the container but keeps the same image)
-
-**No rebuild needed** unless you change the application code itself!
-
-## Security Considerations
-
-- **Sensitive Data:** Your passwords are stored in Unraid's Docker container configuration
-- **Backup:** Back up your Docker templates from `/boot/config/plugins/dockerMan/templates-user/`
-- **Network:** Using host mode gives the container full network access to your Unraid server
-- **Updates:** Regularly rebuild your image if you update the application code
-
-## Support
-
-For issues specific to:
-- **Unraid:** Check Unraid forums
-- **Application:** Check the project repository
-- **Docker:** Review DOCKER.md in the project folder
+- Credentials are stored in Unraid's Docker template XML on the boot USB
+- Back up `/boot/config/plugins/dockerMan/templates-user/` regularly
+- The container runs as a non-root user (`nodejs`, uid 1001)

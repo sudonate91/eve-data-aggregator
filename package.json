@@ -1,6 +1,6 @@
 {
   "name": "eve-data-aggregator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A simple Node.js application",
   "main": "index.mjs",
   "engines": {
@@ -11,7 +11,10 @@
     "start": "node index.mjs",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint .",
-    "lint-fix": "prettier --write ."
+    "lint-fix": "prettier --write .",
+    "release:patch": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags",
+    "release:major": "npm version major && git push && git push --tags"
   },
   "author": "Your Name",
   "license": "ISC",

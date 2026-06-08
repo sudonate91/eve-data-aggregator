@@ -40,12 +40,12 @@ async function importDivision(corporationId, division, headers, sequelizeInstanc
     ));
   } catch (err) {
     console.error(chalk.red(`[Division ${division}] Failed to fetch page 1: ${err.message}`));
-    return 0;
+    return { inserted: 0, updated: 0 };
   }
 
   if (firstPageData.length === 0) {
     console.log(chalk.yellow(`[Division ${division}] No entries found.`));
-    return 0;
+    return { inserted: 0, updated: 0 };
   }
 
   console.log(
@@ -94,5 +94,11 @@ export async function importWalletData(
       importDivision(corporationId, division, headers, sequelizeInstance, characterName),
     ),
   );
-  return counts.reduce((sum, n) => sum + (n ?? 0), 0);
+  return counts.reduce(
+    (acc, n) => ({
+      inserted: acc.inserted + (n?.inserted ?? 0),
+      updated: acc.updated + (n?.updated ?? 0),
+    }),
+    { inserted: 0, updated: 0 },
+  );
 }
