@@ -13,6 +13,34 @@ set -euo pipefail
 
 MYSQL_DATA_DIR="/var/lib/mysql"
 INIT_DONE_MARKER="${MYSQL_DATA_DIR}/.eve_initialized"
+PASSWORDS_FILE="${MYSQL_DATA_DIR}/.eve_passwords"
+
+# ── Auto-manage MySQL passwords ──────────────────────────────────────────────
+# On first boot: generate passwords if not set by user, persist them.
+# On subsequent boots: reload from file so the app always has them.
+if [ -f "${PASSWORDS_FILE}" ]; then
+  # Reload persisted passwords (may override blank env vars)
+  # shellcheck source=/dev/null
+  source "${PASSWORDS_FILE}"
+else
+  # Generate any missing passwords
+  MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)}"
+  DB_USER="${DB_USER:-S0b_Admin}"
+  DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)}"
+  MYSQL_READONLY_PASSWORD="${MYSQL_READONLY_PASSWORD:-$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)}"
+  # Persist for future boots (file lives inside the named volume)
+  mkdir -p "${MYSQL_DATA_DIR}"
+  cat > "${PASSWORDS_FILE}" <<-EOF
+export MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD}"
+export DB_USER="${DB_USER}"
+export DB_PASSWORD="${DB_PASSWORD}"
+export MYSQL_READONLY_PASSWORD="${MYSQL_READONLY_PASSWORD}"
+EOF
+  chmod 600 "${PASSWORDS_FILE}"
+fi
+
+# Re-export so child processes (mysqld, node) see them
+export MYSQL_ROOT_PASSWORD DB_USER DB_PASSWORD MYSQL_READONLY_PASSWORD
 
 # ── Helper: wait for MySQL to be ready ──────────────────────────────────────
 wait_for_mysql() {
