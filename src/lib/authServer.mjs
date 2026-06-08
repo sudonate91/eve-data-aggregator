@@ -341,8 +341,8 @@ async function handleMigrate(req, res) {
   const devContainer = process.env.MYSQL_CONTAINER_NAME || 'eve-mysql-dev';
 
   const [cmd, args] = isLocalDev
-    ? ['docker', ['exec', '-i', devContainer, 'mysql', '-u', 'root', `-p${rootPw}`, '--verbose']]
-    : ['mysql', ['-u', 'root', `-p${rootPw}`, '-h', host, '-P', String(port), '--verbose']];
+    ? ['docker', ['exec', '-i', devContainer, 'mysql', '-u', 'root', `-p${rootPw}`]]
+    : ['mysql', ['-u', 'root', `-p${rootPw}`, '-h', host, '-P', String(port)]];
 
   const proc = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'pipe'] });
   proc.on('error', (err) => {
@@ -410,11 +410,15 @@ async function startMigration(){
     const fd=new FormData();fd.append('file',file);
     const resp=await fetch('/migrate',{method:'POST',body:fd});
     const reader=resp.body.getReader();const dec=new TextDecoder();
+    let buf='';let t=null;
+    function flush(){box.textContent+=buf;buf='';box.scrollTop=box.scrollHeight;t=null;}
     while(true){
       const{done,value}=await reader.read();
       if(done)break;
-      box.textContent+=dec.decode(value);box.scrollTop=box.scrollHeight;
+      buf+=dec.decode(value);
+      if(!t)t=setTimeout(flush,100);
     }
+    if(t)clearTimeout(t);flush();
     box.textContent+='\\n\\u2713 Import complete.';
     btn.textContent='Done \\u2713';
     loadDbStatus();
