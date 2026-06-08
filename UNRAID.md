@@ -28,8 +28,7 @@ docker pull sudonate91/eve-data-aggregator:latest
    sudonate91/eve-data-aggregator:latest
    ```
 3. Set **Network Type** to `Host`
-4. Set **Extra Parameters** to `-it`
-5. Add the following environment variables:
+4. Add the following environment variables:
 
 | Variable | Description | Required |
 |---|---|---|
@@ -70,23 +69,34 @@ docker pull sudonate91/eve-data-aggregator:latest
 
 When a new version is pushed to `main`, GitHub Actions automatically builds and pushes a new image to Docker Hub.
 
-### Option A: Unraid WebUI (easiest)
+> **Note:** Unraid's built-in "Check for Updates" button does not reliably detect updates for manually added containers. Use the SSH method below.
 
-1. Docker tab → find `eve-data-aggregator`
-2. Click **Check for Updates** (or wait for Unraid's scheduled check)
-3. When an update is available, click **Update**
-
-All your saved environment variables are preserved automatically.
-
-### Option B: SSH
+### SSH Update (recommended)
 
 ```bash
+# 1. Pull the new image
 docker pull sudonate91/eve-data-aggregator:latest
+
+# 2. Stop and remove the old container
 docker stop eve-data-aggregator
 docker rm eve-data-aggregator
 ```
 
-Then recreate the container from the WebUI — your saved template values will pre-populate.
+3. In the Unraid WebUI → Docker tab → **Add Container** → select your saved template
+   - All your environment variable values will pre-populate from the saved template XML
+   - Click **Apply**
+
+> Your values are stored in `/boot/config/plugins/dockerMan/templates-user/my-eve-data-aggregator.xml` and survive the remove/recreate cycle.
+
+### Optional: alias for quick updates
+
+Add to `/root/.bashrc` on Unraid:
+
+```bash
+alias update-eve="docker pull sudonate91/eve-data-aggregator:latest && docker stop eve-data-aggregator && docker rm eve-data-aggregator"
+```
+
+Then run `update-eve` to pull and clean up — then recreate via WebUI as above.
 
 ---
 
@@ -112,12 +122,15 @@ docker restart eve-data-aggregator
 
 ## Troubleshooting
 
-### "Not available" on Check for Updates
-The image was built locally and has no Docker Hub digest. Fix:
+### "Not available" / Check for Updates not working
+Unraid's update checker does not reliably work for manually added containers. Use the SSH update method above instead — `docker pull` + stop + rm + WebUI recreate is the reliable path.
+
+To verify whether a newer image exists on Docker Hub:
 ```bash
 docker pull sudonate91/eve-data-aggregator:latest
+# "Image is up to date" = nothing new
+# "Pull complete" = new image downloaded, proceed with stop/rm/recreate
 ```
-Then stop/remove the old container and re-add it from the WebUI.
 
 ### Database Connection Refused
 - Confirm MySQL is running and accessible: `netstat -tlnp | grep 3306`
