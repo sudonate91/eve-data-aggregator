@@ -10,16 +10,17 @@ FROM ubuntu:24.04 AS production
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Node.js 20 and MySQL 8.4
+# Install Node.js 20
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates gnupg lsb-release openssl \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    && curl -fsSL https://repo.mysql.com/mysql-apt-config_0.8.32-1_all.deb -o /tmp/mysql-apt-config.deb \
-    && DEBIAN_FRONTEND=noninteractive dpkg -i /tmp/mysql-apt-config.deb \
-    && rm /tmp/mysql-apt-config.deb \
-    && apt-get update && apt-get install -y --no-install-recommends \
-         mysql-community-server \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install MySQL 8.0 from Ubuntu's default repos (reliable, no external key needed)
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      mysql-server \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
