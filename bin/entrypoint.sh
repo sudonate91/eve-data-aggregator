@@ -46,7 +46,7 @@ export MYSQL_ROOT_PASSWORD DB_USER DB_PASSWORD MYSQL_READONLY_PASSWORD
 wait_for_mysql() {
   echo "[entrypoint] Waiting for MySQL to be ready..."
   local retries=30
-  while ! mysqladmin ping -u root --password="${MYSQL_ROOT_PASSWORD}" --silent 2>/dev/null; do
+  while ! mysqladmin ping -u root --password="${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock --silent 2>/dev/null; do
     retries=$((retries - 1))
     if [ "$retries" -eq 0 ]; then
       echo "[entrypoint] ERROR: MySQL did not become ready in time."
@@ -64,12 +64,13 @@ if [ ! -f "${INIT_DONE_MARKER}" ]; then
   # Initialise the data directory (creates system tables, no root password yet)
   mysqld --initialize-insecure --user=mysql --datadir="${MYSQL_DATA_DIR}"
 
-  # Start MySQL temporarily to run setup SQL
-  mysqld --user=mysql --daemonize --pid-file=/run/mysqld/mysqld.pid
+  # Start MySQL temporarily to run setup SQL (skip-networking so no external access yet)
+  mysqld --user=mysql --skip-networking --socket=/run/mysqld/mysqld.sock &
+  MYSQL_TEMP_PID=$!
 
   # Wait for the temp server
   local_retries=30
-  while ! mysqladmin ping -u root --silent 2>/dev/null; do
+  while ! mysqladmin ping --socket=/run/mysqld/mysqld.sock --silent 2>/dev/null; do
     local_retries=$((local_retries - 1))
     [ "$local_retries" -eq 0 ] && { echo "[entrypoint] ERROR: temp MySQL did not start."; exit 1; }
     sleep 2
@@ -78,7 +79,7 @@ if [ ! -f "${INIT_DONE_MARKER}" ]; then
   echo "[entrypoint] Running first-boot SQL setup..."
 
   # Set root password
-  mysql -u root <<-EOSQL
+  mysql -u root --socket=/run/mysqld/mysqld.sock <<-EOSQL
     ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
     FLUSH PRIVILEGES;
 EOSQL
@@ -93,16 +94,17 @@ EOSQL
         MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD}" \
         MYSQL_PASSWORD="${DB_PASSWORD}" \
         MYSQL_READONLY_PASSWORD="${MYSQL_READONLY_PASSWORD:-${DB_PASSWORD}}" \
+        MYSQL_SOCKET=/run/mysqld/mysqld.sock \
           bash "$f"
         ;;
       *.sql)
-        mysql -u root --password="${MYSQL_ROOT_PASSWORD}" < "$f"
+        mysql -u root --password="${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock < "$f"
         ;;
     esac
   done
 
   # Create app user
-  mysql -u root --password="${MYSQL_ROOT_PASSWORD}" <<-EOSQL
+  mysql -u root --password="${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock <<-EOSQL
     CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
     GRANT ALL PRIVILEGES ON S0b.*        TO '${DB_USER}'@'%';
     GRANT ALL PRIVILEGES ON S0b_Struct.* TO '${DB_USER}'@'%';
@@ -121,8 +123,9 @@ port = 3306
 CNF
 
   # Stop temp server gracefully
-  mysqladmin -u root --password="${MYSQL_ROOT_PASSWORD}" shutdown || true
-  sleep 3
+  mysqladmin -u root --password="${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock shutdown || true
+  wait $MYSQL_TEMP_PID 2>/dev/null || true
+  sleep 2
 
   touch "${INIT_DONE_MARKER}"
   echo "[entrypoint] First-boot init complete."
@@ -138,8 +141,7 @@ chown mysql:mysql /run/mysqld 2>/dev/null || true
 mysqld --user=mysql \
        --bind-address=0.0.0.0 \
        --port=3306 \
-       --daemonize \
-       --pid-file=/run/mysqld/mysqld.pid
+       --socket=/run/mysqld/mysqld.sock &
 
 wait_for_mysql
 

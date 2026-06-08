@@ -18,7 +18,8 @@ set -euo pipefail
 
 READONLY_PASSWORD="${MYSQL_READONLY_PASSWORD:-${MYSQL_PASSWORD}}"
 
-mysql -u root -p"${MYSQL_ROOT_PASSWORD}" <<-EOSQL
+SOCKET="${MYSQL_SOCKET:-/run/mysqld/mysqld.sock}"
+mysql -u root -p"${MYSQL_ROOT_PASSWORD}" --socket="${SOCKET}" <<-EOSQL
     CREATE USER IF NOT EXISTS 'eve_readonly'@'%' IDENTIFIED BY '${READONLY_PASSWORD}';
 
     GRANT SELECT ON S0b.*        TO 'eve_readonly'@'%';
