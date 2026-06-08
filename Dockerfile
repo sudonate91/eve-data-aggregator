@@ -15,9 +15,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates gnupg lsb-release openssl \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    && curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 | gpg --dearmor -o /usr/share/keyrings/mysql.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/mysql.gpg] http://repo.mysql.com/apt/ubuntu noble mysql-8.4-lts" \
-         > /etc/apt/sources.list.d/mysql.list \
+    && curl -fsSL https://repo.mysql.com/mysql-apt-config_0.8.32-1_all.deb -o /tmp/mysql-apt-config.deb \
+    && DEBIAN_FRONTEND=noninteractive dpkg -i /tmp/mysql-apt-config.deb \
+    && rm /tmp/mysql-apt-config.deb \
     && apt-get update && apt-get install -y --no-install-recommends \
          mysql-community-server \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
