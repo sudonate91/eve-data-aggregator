@@ -1,9 +1,43 @@
 import chalk from 'chalk';
+import defineContractsModel from '../../models/Contract.mjs';
 
-async function getContractModel(sequelizeInstance) {
-  const modelModule = await import('../../models/Contract.mjs');
-  const defineModel = modelModule.default;
-  return defineModel(sequelizeInstance);
+const STATUS_UPDATE_FIELDS = [
+  'status',
+  'date_accepted',
+  'date_completed',
+  'acceptor_id',
+];
+
+const CONTRACT_UPDATE_FIELDS = [
+  'acceptor_id',
+  'assignee_id',
+  'availability',
+  'collateral',
+  'date_accepted',
+  'date_completed',
+  'date_expired',
+  'date_issued',
+  'days_to_complete',
+  'end_location_id',
+  'for_corporation',
+  'issuer_corporation_id',
+  'issuer_id',
+  'price',
+  'reward',
+  'start_location_id',
+  'status',
+  'title',
+  'type',
+  'volume',
+  'character_name',
+  'contract_type',
+  'total_value',
+];
+
+export async function getExistingContractIds(sequelizeInstance) {
+  const Contract = defineContractsModel(sequelizeInstance);
+  const rows = await Contract.findAll({ attributes: ['contract_id'], raw: true });
+  return new Set(rows.map((r) => r.contract_id));
 }
 
 export async function upsertContracts(contracts, sequelizeInstance) {
@@ -12,75 +46,27 @@ export async function upsertContracts(contracts, sequelizeInstance) {
     return;
   }
   try {
-    const Contract = await getContractModel(sequelizeInstance);
-    
-    // Debug: Log sample contract data
-    if (contracts.length > 0) {
-      const sample = contracts[0];
-      console.log(
-        chalk.magenta(
-          `\nDebug - Sample contract data:` +
-          `\n  contract_id: ${sample.contract_id}` +
-          `\n  contract_type: ${sample.contract_type}` +
-          `\n  total_value: ${sample.total_value}` +
-          `\n  character_name: ${sample.character_name}`
-        )
-      );
-    }
-    
-    // Use bulkCreate with updateOnDuplicate to insert new or update existing
+    const Contract = defineContractsModel(sequelizeInstance);
     const result = await Contract.bulkCreate(contracts, {
-      updateOnDuplicate: [
-        'acceptor_id',
-        'assignee_id',
-        'availability',
-        'collateral',
-        'date_accepted',
-        'date_completed',
-        'date_expired',
-        'date_issued',
-        'days_to_complete',
-        'end_location_id',
-        'for_corporation',
-        'issuer_corporation_id',
-        'issuer_id',
-        'price',
-        'reward',
-        'start_location_id',
-        'status',
-        'title',
-        'type',
-        'volume',
-        'character_name',
-        'contract_type',
-        'total_value'
-      ],
+      updateOnDuplicate: CONTRACT_UPDATE_FIELDS,
     });
-    
-    console.log(
-      chalk.green(
-        `\n✓ ${contracts.length} contracts upserted successfully (inserted new or updated existing)`
-      )
-    );
-    
-    // Verify the sample contract was saved correctly
-    if (contracts.length > 0) {
-      const sampleId = contracts[0].contract_id;
-      const saved = await Contract.findByPk(sampleId);
-      if (saved) {
-        console.log(
-          chalk.cyan(
-            `\nVerification - Contract ${sampleId} in database:` +
-            `\n  total_value: ${saved.total_value}` +
-            `\n  contract_type: ${saved.contract_type}`
-          )
-        );
-      }
-    }
+    console.log(chalk.green(`✓ ${result.length} Skyhook contract(s) upserted.`));
   } catch (error) {
-    console.error(
-      chalk.red('Error upserting contracts:', error)
-    );
+    console.error(chalk.red('Error upserting contracts:', error));
+    throw error;
+  }
+}
+
+export async function updateContractStatuses(contracts, sequelizeInstance) {
+  if (!Array.isArray(contracts) || contracts.length === 0) return;
+  try {
+    const Contract = defineContractsModel(sequelizeInstance);
+    const result = await Contract.bulkCreate(contracts, {
+      updateOnDuplicate: STATUS_UPDATE_FIELDS,
+    });
+    console.log(chalk.green(`✓ ${result.length} contract status(es) updated.`));
+  } catch (error) {
+    console.error(chalk.red('Error updating contract statuses:', error));
     throw error;
   }
 }

@@ -118,172 +118,89 @@ const getJobSelections = async () => {
   ]);
 };
 
-let jobSelections = {};
+async function runJob(label, fn) {
+  const start = Date.now();
+  try {
+    console.log(chalk.blue(`🔄 Starting ${label}...`));
+    const count = await fn();
+    const duration = ((Date.now() - start) / 1000).toFixed(1);
+    console.log(chalk.green(`✓ ${label} completed successfully.`));
+    return { label, status: 'ok', duration, count };
+  } catch (error) {
+    const duration = ((Date.now() - start) / 1000).toFixed(1);
+    console.error(chalk.red(`✗ Error during ${label}: ${error.message}`));
+    return { label, status: 'error', duration, error: error.message };
+  }
+}
 
 const runJobs = async () => {
-  if (
-    !jobSelections.importS0bHoldingsWalletData &&
-    !jobSelections.importCsvToDb &&
-    !jobSelections.importS0bStructureManagementWalletData &&
-    !jobSelections.importVen0mWalletData &&
-    !jobSelections.importKryTekWalletData &&
-    !jobSelections.importS0bMartWalletData &&
-    !jobSelections.importS0bStructContracts
-  ) {
-    jobSelections = await getJobSelections();
-  }
+  const jobSelections = await getJobSelections();
+
+  const jobs = [];
 
   if (jobSelections.importS0bHoldingsWalletData) {
-    try {
-      console.log(chalk.blue('🔄 Starting S0b Holdings wallet import...'));
-      const authData = await runOAuthFlow(
-        'importS0bHoldingsWalletData',
-        sequelize,
-      );
-      const { jwt, accessToken } = authData;
-      await importWalletData(
-        jwt,
-        accessToken,
-        sequelize,
-        process.env.CORPORATION_ID,
-      );
-      console.log(
-        chalk.green('✓ S0b Holdings wallet import completed successfully.'),
-      );
-    } catch (error) {
-      console.error(
-        chalk.red(`✗ Error during S0b Holdings wallet import: ${error.message}`),
-      );
-    }
-  }
-
-  if (jobSelections.importCsvToDb) {
-    try {
-      console.log(chalk.blue('🔄 Starting CSV import...'));
-      await importCsvToDb();
-      console.log(chalk.green('✓ CSV import completed successfully.'));
-    } catch (error) {
-      console.error(chalk.red(`✗ Error during CSV import: ${error.message}`));
-    }
+    jobs.push(runJob('S0b Holdings wallet import', async () => {
+      const { jwt, accessToken } = await runOAuthFlow('importS0bHoldingsWalletData', sequelize);
+      return importWalletData(jwt, accessToken, sequelize, process.env.CORPORATION_ID);
+    }));
   }
 
   if (jobSelections.importS0bStructureManagementWalletData) {
-    try {
-      console.log(chalk.blue('🔄 Starting S0b Structure Management wallet import...'));
-      const authData = await runOAuthFlow(
-        'importS0bStructureManagementWalletData',
-        structSequelize,
-      );
-      const { jwt, accessToken } = authData;
-      await importWalletData(
-        jwt,
-        accessToken,
-        structSequelize,
-        process.env.STRUCT_CORPORATION_ID,
-      );
-      console.log(
-        chalk.green(
-          '✓ S0b Structure Management wallet import completed successfully.',
-        ),
-      );
-    } catch (error) {
-      console.error(
-        chalk.red(
-          `✗ Error during S0b Structure Management wallet import: ${error.message}`,
-        ),
-      );
-    }
+    jobs.push(runJob('S0b Structure Management wallet import', async () => {
+      const { jwt, accessToken } = await runOAuthFlow('importS0bStructureManagementWalletData', structSequelize);
+      return importWalletData(jwt, accessToken, structSequelize, process.env.STRUCT_CORPORATION_ID);
+    }));
   }
 
   if (jobSelections.importVen0mWalletData) {
-    try {
-      console.log(chalk.blue('🔄 Starting Ven0m wallet import...'));
-      const authData = await runOAuthFlow(
-        'importVen0mWalletData',
-        ven0mSequelize,
-      );
-      const { jwt, accessToken } = authData;
-      await importWalletData(
-        jwt,
-        accessToken,
-        ven0mSequelize,
-        process.env.VEN0M_CORPORATION_ID,
-      );
-      console.log(chalk.green('✓ Ven0m wallet import completed successfully.'));
-    } catch (error) {
-      console.error(
-        chalk.red(`✗ Error during Ven0m wallet import: ${error.message}`),
-      );
-    }
+    jobs.push(runJob('Ven0m wallet import', async () => {
+      const { jwt, accessToken } = await runOAuthFlow('importVen0mWalletData', ven0mSequelize);
+      return importWalletData(jwt, accessToken, ven0mSequelize, process.env.VEN0M_CORPORATION_ID);
+    }));
   }
 
   if (jobSelections.importKryTekWalletData) {
-    try {
-      console.log(chalk.blue('🔄 Starting KryTek wallet import...'));
-      const authData = await runOAuthFlow(
-        'importKryTekWalletData',
-        krytekSequelize,
-      );
-      const { jwt, accessToken } = authData;
-      await importWalletData(
-        jwt,
-        accessToken,
-        krytekSequelize,
-        process.env.KRYTEK_CORPORATION_ID,
-      );
-      console.log(chalk.green('✓ KryTek wallet import completed successfully.'));
-    } catch (error) {
-      console.error(
-        chalk.red(`✗ Error during KryTek wallet import: ${error.message}`),
-      );
-    }
+    jobs.push(runJob('KryTek wallet import', async () => {
+      const { jwt, accessToken } = await runOAuthFlow('importKryTekWalletData', krytekSequelize);
+      return importWalletData(jwt, accessToken, krytekSequelize, process.env.KRYTEK_CORPORATION_ID);
+    }));
   }
 
   if (jobSelections.importS0bMartWalletData) {
-    try {
-      console.log(chalk.blue('🔄 Starting S0b-Mart wallet import...'));
-      const authData = await runOAuthFlow(
-        'importS0bMartWalletData',
-        s0bMartSequelize,
-      );
-      const { jwt, accessToken } = authData;
-      await importWalletData(
-        jwt,
-        accessToken,
-        s0bMartSequelize,
-        process.env.S0B_MART_CORPORATION_ID,
-      );
-      console.log(chalk.green('✓ S0b-Mart wallet import completed successfully.'));
-    } catch (error) {
-      console.error(
-        chalk.red(`✗ Error during S0b-Mart wallet import: ${error.message}`),
-      );
-    }
+    jobs.push(runJob('S0b-Mart wallet import', async () => {
+      const { jwt, accessToken } = await runOAuthFlow('importS0bMartWalletData', s0bMartSequelize);
+      return importWalletData(jwt, accessToken, s0bMartSequelize, process.env.S0B_MART_CORPORATION_ID);
+    }));
   }
 
   if (jobSelections.importS0bStructContracts) {
-    try {
-      console.log(chalk.blue('🔄 Starting S0b_Struct contracts import...'));
-      const authData = await runOAuthFlow(
-        'importS0bStructContracts',
-        structSequelize,
-      );
-      const { jwt, accessToken } = authData;
-      await importCorporationContracts(
-        jwt,
-        accessToken,
-        process.env.STRUCT_CORPORATION_ID,
-        structSequelize,
-      );
-      console.log(
-        chalk.green('✓ S0b_Struct contracts import completed successfully.'),
-      );
-    } catch (error) {
-      console.error(
-        chalk.red(`✗ Error during S0b_Struct contracts import: ${error.message}`),
-      );
-    }
+    jobs.push(runJob('S0b_Struct contracts import', async () => {
+      const { jwt, accessToken } = await runOAuthFlow('importS0bStructContracts', structSequelize);
+      return importCorporationContracts(jwt, accessToken, process.env.STRUCT_CORPORATION_ID, structSequelize);
+    }));
   }
+
+  if (jobSelections.importCsvToDb) {
+    jobs.push(runJob('CSV import', () => importCsvToDb()));
+  }
+
+  const results = await Promise.allSettled(jobs);
+
+  const now = new Date().toLocaleTimeString();
+  console.log(chalk.bold(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
+  console.log(chalk.bold(`📋 Run Summary — ${now}`));
+  console.log(chalk.bold(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
+  for (const settled of results) {
+    const r = settled.value;
+    if (!r) continue;
+    const icon = r.status === 'ok' ? chalk.green('✓') : chalk.red('✗');
+    const label = r.status === 'ok' ? chalk.green(r.label) : chalk.red(r.label);
+    const time = chalk.gray(`(${r.duration}s)`);
+    const updated = r.count != null ? chalk.cyan(` — ${r.count} updated`) : '';
+    const err = r.error ? chalk.red(` — ${r.error}`) : '';
+    console.log(`  ${icon} ${label} ${time}${updated}${err}`);
+  }
+  console.log(chalk.bold(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`));
 };
 
 const initialize = async () => {
@@ -299,6 +216,13 @@ const initialize = async () => {
     console.log(
       chalk.green(
         '✓ Database connection to S0b_Struct has been established successfully.',
+      ),
+    );
+
+    await ven0mSequelize.authenticate();
+    console.log(
+      chalk.green(
+        '✓ Database connection to Ven0m has been established successfully.',
       ),
     );
 
@@ -364,15 +288,17 @@ const main = async () => {
   let iterationCount = 0;
 
   if (intervalMs) {
-    console.log(chalk.yellow(`\n🔄 Scheduling next run in ${intervalMs / 60000} minutes...\n`));
-    setInterval(async () => {
+    const scheduleNext = async () => {
       iterationCount++;
       console.log(chalk.blue(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
       console.log(chalk.blue(`📊 Iteration count: ${iterationCount}`));
       console.log(chalk.blue(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`));
       await runJobs();
       console.log(chalk.yellow(`\n🔄 Next run in ${intervalMs / 60000} minutes...\n`));
-    }, intervalMs);
+      setTimeout(scheduleNext, intervalMs);
+    };
+    console.log(chalk.yellow(`\n🔄 Next run in ${intervalMs / 60000} minutes...\n`));
+    setTimeout(scheduleNext, intervalMs);
   } else {
     console.log(chalk.green('\n✓ Job execution completed. Exiting...\n'));
     process.exit(0);
