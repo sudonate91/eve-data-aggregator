@@ -11,7 +11,7 @@
   <Project>https://github.com/sudonate91/eve-data-aggregator</Project>
   <Overview>EVE Online Data Aggregator - CLI tool for importing corporation wallet and contract data from EVE Online ESI API to MySQL databases.</Overview>
   <Category>Tools:</Category>
-  <WebUI/>
+  <WebUI>http://[IP]:[PORT:3000]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/unraid-template.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/icon.png</Icon>
   <ExtraParams></ExtraParams>
@@ -22,17 +22,17 @@
   <DonateLink/>
   <Requires/>
   <Config Name="EVE Client ID" Target="CLIENT_ID" Default="" Mode="" Description="Your EVE Online ESI Application Client ID" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="Callback URL" Target="CALLBACK_URL" Default="https://localhost/callback/" Mode="" Description="OAuth callback URL (must match ESI app configuration)" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Callback URL" Target="CALLBACK_URL" Default="http://[IP]:[PORT:3000]/callback" Mode="" Description="OAuth callback URL (must match ESI app configuration)" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="ESI Scope" Target="SCOPE" Default="esi-wallet.read_corporation_wallets.v1 esi-contracts.read_corporation_contracts.v1" Mode="" Description="ESI API scopes (space-separated)" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="OAuth State" Target="STATE" Default="" Mode="" Description="OAuth state parameter for security" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="Main Corporation ID" Target="CORPORATION_ID" Default="" Mode="" Description="Main corporation ID (S0b Holdings)" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="Structure Corp ID" Target="STRUCT_CORPORATION_ID" Default="" Mode="" Description="Structure Management corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Ven0m Corporation ID" Target="VEN0M_CORPORATION_ID" Default="" Mode="" Description="Ven0m corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="KryTek Corporation ID" Target="KRYTEK_CORPORATION_ID" Default="" Mode="" Description="KryTek corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="S0b Mart Corporation ID" Target="S0B_MART_CORPORATION_ID" Default="" Mode="" Description="S0b Mart corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Janice API Key" Target="JANICE_API_KEY" Default="" Mode="" Description="Janice API key for price checking" Type="Variable" Display="always" Required="false" Mask="true"/>
-  <Config Name="Database Host" Target="DB_HOST" Default="" Mode="" Description="MySQL database server IP (use localhost or 127.0.0.1 for Unraid host)" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="Database User" Target="DB_USER" Default="" Mode="" Description="MySQL database username" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="OAuth State" Target="STATE" Default="unique-state" Mode="" Description="OAuth state parameter for security" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Main Corporation ID" Target="CORPORATION_ID" Default="98399918" Mode="" Description="Main corporation ID (S0b Holdings)" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Structure Corp ID" Target="STRUCT_CORPORATION_ID" Default="98782550" Mode="" Description="Structure Management corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Ven0m Corporation ID" Target="VEN0M_CORPORATION_ID" Default="98628586" Mode="" Description="Ven0m corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="KryTek Corporation ID" Target="KRYTEK_CORPORATION_ID" Default="1108900188" Mode="" Description="KryTek corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="S0b Mart Corporation ID" Target="S0B_MART_CORPORATION_ID" Default="98830670" Mode="" Description="S0b Mart corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Janice API Key" Target="JANICE_API_KEY" Default="BaSjUOMtnjzOyMllN92rJvUWgWdt8CRj" Mode="" Description="Janice API key for price checking" Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="Database Host" Target="DB_HOST" Default="127.0.0.1" Mode="" Description="MySQL database server IP (use localhost or 127.0.0.1 for Unraid host)" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Database User" Target="DB_USER" Default="S0b_Admin" Mode="" Description="MySQL database username" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Database Password" Target="DB_PASSWORD" Default="" Mode="" Description="MySQL database password" Type="Variable" Display="always" Required="true" Mask="true"/>
   <Config Name="Main Database Name" Target="DB_NAME" Default="S0b" Mode="" Description="Main database name" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Struct Database Name" Target="S0b_STRUCT_DB_NAME" Default="S0b_Struct" Mode="" Description="Structure management database name" Type="Variable" Display="always" Required="false" Mask="false"/>
@@ -44,10 +44,12 @@
   <Config Name="Use Environment Config" Target="USE_ENV_CONFIG" Default="true" Mode="" Description="Set to 'true' to use environment variables instead of interactive prompts (required for Docker/Unraid)" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Run Interval (Minutes)" Target="RUN_INTERVAL_MINUTES" Default="60" Mode="" Description="Interval in minutes to repeat jobs (0 or empty for single run)" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Enable S0b Wallet Import" Target="ENABLE_S0B_WALLET" Default="true" Mode="" Description="Enable S0b Holdings wallet data import" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Enable S0b Struct Wallet Import" Target="ENABLE_S0B_STRUCT_WALLET" Default="false" Mode="" Description="Enable S0b Structure Management wallet data import" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Enable Ven0m Wallet Import" Target="ENABLE_VEN0M_WALLET" Default="false" Mode="" Description="Enable Ven0m wallet data import" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Enable KryTek Wallet Import" Target="ENABLE_KRYTEK_WALLET" Default="false" Mode="" Description="Enable KryTek wallet data import" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Enable S0b Mart Wallet Import" Target="ENABLE_S0B_MART_WALLET" Default="false" Mode="" Description="Enable S0b-Mart wallet data import" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Enable S0b Struct Contracts Import" Target="ENABLE_S0B_STRUCT_CONTRACTS" Default="false" Mode="" Description="Enable S0b_Struct contracts import" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Enable S0b Struct Wallet Import" Target="ENABLE_S0B_STRUCT_WALLET" Default="true" Mode="" Description="Enable S0b Structure Management wallet data import" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Enable Ven0m Wallet Import" Target="ENABLE_VEN0M_WALLET" Default="true" Mode="" Description="Enable Ven0m wallet data import" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Enable KryTek Wallet Import" Target="ENABLE_KRYTEK_WALLET" Default="true" Mode="" Description="Enable KryTek wallet data import" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Enable S0b Mart Wallet Import" Target="ENABLE_S0B_MART_WALLET" Default="true" Mode="" Description="Enable S0b-Mart wallet data import" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Enable S0b Struct Contracts Import" Target="ENABLE_S0B_STRUCT_CONTRACTS" Default="true" Mode="" Description="Enable S0b_Struct contracts import" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Enable CSV Import" Target="ENABLE_CSV_IMPORT" Default="false" Mode="" Description="Enable CSV data import to database" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="App Port" Target="3000" Default="3000" Mode="tcp" Description="Auth UI web port" Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="MySQL Data" Target="/var/lib/mysql" Default="eve-data-v2" Mode="rw" Description="Persistent MySQL data volume" Type="Volume" Display="advanced" Required="false" Mask="false"/>
 </Container>
