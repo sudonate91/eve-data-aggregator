@@ -29,7 +29,7 @@
   <Config Name="EVE Client ID" Target="CLIENT_ID" Default="" Mode="" Description="Your EVE Online ESI Application Client ID" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Callback URL" Target="CALLBACK_URL" Default="" Mode="" Description="OAuth callback URL — must match your ESI app AND point to this container. Set to http://&lt;unraid-ip&gt;:3000/callback" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="ESI Scope" Target="SCOPE" Default="esi-wallet.read_corporation_wallets.v1 esi-contracts.read_corporation_contracts.v1" Mode="" Description="ESI API scopes (space-separated)" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="OAuth State" Target="STATE" Default="" Mode="" Description="OAuth state parameter for security" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="OAuth State" Target="STATE" Default="unique-state" Mode="" Description="OAuth state parameter for security — change to any unique string." Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Main Corporation ID" Target="CORPORATION_ID" Default="" Mode="" Description="Main corporation ID (S0b Holdings)" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Structure Corp ID" Target="STRUCT_CORPORATION_ID" Default="" Mode="" Description="Structure Management corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Ven0m Corporation ID" Target="VEN0M_CORPORATION_ID" Default="" Mode="" Description="Ven0m corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
