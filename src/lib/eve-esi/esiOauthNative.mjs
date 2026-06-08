@@ -18,16 +18,6 @@ export async function runOAuthFlow(job, sequelizeInstance) {
     return refreshToken(existingToken, job, sequelizeInstance);
   }
 
-  // No token found — in non-interactive (Docker/Unraid) mode we cannot prompt.
-  // Tokens must be seeded locally first, then migrated into the container DB.
-  if (process.env.USE_ENV_CONFIG === 'true') {
-    throw new Error(
-      `No token found for job: ${job}. ` +
-      `Run the app locally (npm run dev) to authenticate and seed the token, ` +
-      `then migrate the database to the container.`
-    );
-  }
-
   const { codeVerifier, codeChallenge } = generateCodeVerifierAndChallenge();
   const clientId = process.env.CLIENT_ID;
 

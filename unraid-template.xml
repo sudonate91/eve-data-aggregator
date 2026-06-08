@@ -20,9 +20,10 @@
   <DateInstalled></DateInstalled>
   <DonateText/>
   <DonateLink/>
-  <Requires>Install the eve-mysql container first. Both containers must use the eve-network custom network.</Requires>
+  <Requires>Install the eve-mysql container first. Both containers must use the eve-network custom network. Set CALLBACK_URL to http://&lt;unraid-ip&gt;:3000/callback and add that same URL to your EVE ESI application's callback list.</Requires>
+  <Config Name="Auth Web UI Port" Target="AUTH_PORT" Default="3000" Mode="tcp" Description="Port for the auth web UI. Open http://&lt;unraid-ip&gt;:3000 in a browser to authenticate each corp after first install." Type="Port" Display="always" Required="true" Mask="false"/>
   <Config Name="EVE Client ID" Target="CLIENT_ID" Default="" Mode="" Description="Your EVE Online ESI Application Client ID" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="Callback URL" Target="CALLBACK_URL" Default="https://localhost/callback/" Mode="" Description="OAuth callback URL (must match ESI app configuration)" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Callback URL" Target="CALLBACK_URL" Default="" Mode="" Description="OAuth callback URL — must match your ESI app AND point to this container. Set to http://&lt;unraid-ip&gt;:3000/callback" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="ESI Scope" Target="SCOPE" Default="esi-wallet.read_corporation_wallets.v1 esi-contracts.read_corporation_contracts.v1" Mode="" Description="ESI API scopes (space-separated)" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="OAuth State" Target="STATE" Default="" Mode="" Description="OAuth state parameter for security" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Main Corporation ID" Target="CORPORATION_ID" Default="" Mode="" Description="Main corporation ID (S0b Holdings)" Type="Variable" Display="always" Required="true" Mask="false"/>

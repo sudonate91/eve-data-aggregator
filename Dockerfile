@@ -34,8 +34,8 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER nodejs
 
-# Expose port if needed (for future web interface)
-# EXPOSE 3000
+# Auth web UI port
+EXPOSE 3000
 
 # Run the CLI application
 ENTRYPOINT ["node", "bin/index.mjs"]

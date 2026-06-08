@@ -43,7 +43,11 @@ services:
     depends_on:
       eve-mysql:
         condition: service_healthy
+    ports:
+      # Auth web UI — open http://<host-ip>:3000 to authenticate corps
+      - "3000:3000"
     environment:
+      - AUTH_PORT=3000
       - CLIENT_ID=${CLIENT_ID}
       - CALLBACK_URL=${CALLBACK_URL}
       - SCOPE=${SCOPE}

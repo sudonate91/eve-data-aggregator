@@ -13,6 +13,7 @@ import ven0mSequelize from '../src/utils/ven0mSequelizeClient.mjs';
 import krytekSequelize from '../src/utils/krytekSequelizeClient.mjs';
 import s0bMartSequelize from '../src/utils/s0bMartSequelizeClient.mjs';
 import { importCsvToDb } from '../src/utils/csvWalletHistory.mjs';
+import { configureAuthServer, startAuthServer, allTokensPresent } from '../src/lib/authServer.mjs';
 
 dotenv.config();
 
@@ -133,33 +134,30 @@ async function runJob(label, fn) {
   }
 }
 
+// Build the enabled job list from env/interactive selections.
+// Shared between authServer config and runJobs.
+const buildJobDefs = (jobSelections) => {
+  const defs = [];
+  if (jobSelections.importS0bHoldingsWalletData)
+    defs.push({ label: 'S0b Holdings wallet import', jobKey: 'importS0bHoldingsWalletData', db: sequelize, dataFn: (jwt, token) => importWalletData(jwt, token, sequelize, process.env.CORPORATION_ID) });
+  if (jobSelections.importS0bStructureManagementWalletData)
+    defs.push({ label: 'S0b Structure Management wallet import', jobKey: 'importS0bStructureManagementWalletData', db: structSequelize, dataFn: (jwt, token) => importWalletData(jwt, token, structSequelize, process.env.STRUCT_CORPORATION_ID) });
+  if (jobSelections.importVen0mWalletData)
+    defs.push({ label: 'Ven0m wallet import', jobKey: 'importVen0mWalletData', db: ven0mSequelize, dataFn: (jwt, token) => importWalletData(jwt, token, ven0mSequelize, process.env.VEN0M_CORPORATION_ID) });
+  if (jobSelections.importKryTekWalletData)
+    defs.push({ label: 'KryTek wallet import', jobKey: 'importKryTekWalletData', db: krytekSequelize, dataFn: (jwt, token) => importWalletData(jwt, token, krytekSequelize, process.env.KRYTEK_CORPORATION_ID) });
+  if (jobSelections.importS0bMartWalletData)
+    defs.push({ label: 'S0b-Mart wallet import', jobKey: 'importS0bMartWalletData', db: s0bMartSequelize, dataFn: (jwt, token) => importWalletData(jwt, token, s0bMartSequelize, process.env.S0B_MART_CORPORATION_ID) });
+  if (jobSelections.importS0bStructContracts)
+    defs.push({ label: 'S0b_Struct contracts import', jobKey: 'importS0bStructContracts', db: structSequelize, dataFn: (jwt, token) => importCorporationContracts(jwt, token, process.env.STRUCT_CORPORATION_ID, structSequelize) });
+  return defs;
+};
+
 const runJobs = async () => {
   const jobSelections = await getJobSelections();
+  const jobDefs = buildJobDefs(jobSelections);
 
   // ── Phase 1: Auth — sequential so prompts never collide ──────────────────
-  // Each entry: { label, jobKey, db, corpId, dataFn }
-  const jobDefs = [];
-
-  if (jobSelections.importS0bHoldingsWalletData) {
-    jobDefs.push({ label: 'S0b Holdings wallet import', jobKey: 'importS0bHoldingsWalletData', db: sequelize, corpId: process.env.CORPORATION_ID, dataFn: (jwt, token) => importWalletData(jwt, token, sequelize, process.env.CORPORATION_ID) });
-  }
-  if (jobSelections.importS0bStructureManagementWalletData) {
-    jobDefs.push({ label: 'S0b Structure Management wallet import', jobKey: 'importS0bStructureManagementWalletData', db: structSequelize, corpId: process.env.STRUCT_CORPORATION_ID, dataFn: (jwt, token) => importWalletData(jwt, token, structSequelize, process.env.STRUCT_CORPORATION_ID) });
-  }
-  if (jobSelections.importVen0mWalletData) {
-    jobDefs.push({ label: 'Ven0m wallet import', jobKey: 'importVen0mWalletData', db: ven0mSequelize, corpId: process.env.VEN0M_CORPORATION_ID, dataFn: (jwt, token) => importWalletData(jwt, token, ven0mSequelize, process.env.VEN0M_CORPORATION_ID) });
-  }
-  if (jobSelections.importKryTekWalletData) {
-    jobDefs.push({ label: 'KryTek wallet import', jobKey: 'importKryTekWalletData', db: krytekSequelize, corpId: process.env.KRYTEK_CORPORATION_ID, dataFn: (jwt, token) => importWalletData(jwt, token, krytekSequelize, process.env.KRYTEK_CORPORATION_ID) });
-  }
-  if (jobSelections.importS0bMartWalletData) {
-    jobDefs.push({ label: 'S0b-Mart wallet import', jobKey: 'importS0bMartWalletData', db: s0bMartSequelize, corpId: process.env.S0B_MART_CORPORATION_ID, dataFn: (jwt, token) => importWalletData(jwt, token, s0bMartSequelize, process.env.S0B_MART_CORPORATION_ID) });
-  }
-  if (jobSelections.importS0bStructContracts) {
-    jobDefs.push({ label: 'S0b_Struct contracts import', jobKey: 'importS0bStructContracts', db: structSequelize, corpId: process.env.STRUCT_CORPORATION_ID, dataFn: (jwt, token) => importCorporationContracts(jwt, token, process.env.STRUCT_CORPORATION_ID, structSequelize) });
-  }
-
-  // Auth sequentially — one prompt at a time
   const authResults = [];
   for (const job of jobDefs) {
     try {
@@ -174,7 +172,6 @@ const runJobs = async () => {
 
   // ── Phase 2: Data import — parallel now that all tokens are ready ─────────
   const jobs = [];
-
   for (const job of authResults) {
     if (!job.authOk) {
       jobs.push(Promise.resolve({ label: job.label, status: 'error', duration: '0.0', error: job.authError }));
@@ -299,6 +296,35 @@ const main = async () => {
   await initialize();
 
   const intervalMs = await getRunInterval();
+
+  // Start the auth web server (always — useful for re-auth too)
+  const authPort = parseInt(process.env.AUTH_PORT) || 3000;
+  const jobSelections = await getJobSelections();
+  const jobDefs = buildJobDefs(jobSelections);
+  configureAuthServer(jobDefs, authPort);
+  startAuthServer();
+
+  // In non-interactive mode, wait for all tokens to be present via the web UI
+  // before running the first job batch.
+  if (useEnvConfig) {
+    const ready = await allTokensPresent();
+    if (!ready) {
+      console.log(chalk.bold.yellow(
+        `\n⚠  Some corps are not authenticated yet.\n` +
+        `   Open http://<your-ip>:${authPort} in a browser and authenticate each corp.\n` +
+        `   Jobs will start automatically once all tokens are present.\n`
+      ));
+      await new Promise((resolve) => {
+        const poll = setInterval(async () => {
+          if (await allTokensPresent()) {
+            clearInterval(poll);
+            console.log(chalk.green('\n✓ All tokens present — starting jobs.\n'));
+            resolve();
+          }
+        }, 10_000);
+      });
+    }
+  }
 
   await runJobs();
 
