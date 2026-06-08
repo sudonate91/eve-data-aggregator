@@ -30,7 +30,7 @@
   <Config Name="Ven0m Corporation ID" Target="VEN0M_CORPORATION_ID" Default="98628586" Mode="" Description="Ven0m corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="KryTek Corporation ID" Target="KRYTEK_CORPORATION_ID" Default="1108900188" Mode="" Description="KryTek corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="S0b Mart Corporation ID" Target="S0B_MART_CORPORATION_ID" Default="98830670" Mode="" Description="S0b Mart corporation ID" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Janice API Key" Target="JANICE_API_KEY" Default="BaSjUOMtnjzOyMllN92rJvUWgWdt8CRj" Mode="" Description="Janice API key for price checking" Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="Janice API Key" Target="JANICE_API_KEY" Default="" Mode="" Description="Janice API key for price checking" Type="Variable" Display="always" Required="false" Mask="true"/>
   <Config Name="Database Host" Target="DB_HOST" Default="127.0.0.1" Mode="" Description="MySQL database server IP (use localhost or 127.0.0.1 for Unraid host)" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Database User" Target="DB_USER" Default="S0b_Admin" Mode="" Description="MySQL database username" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="Database Password" Target="DB_PASSWORD" Default="" Mode="" Description="MySQL database password" Type="Variable" Display="always" Required="true" Mask="true"/>
