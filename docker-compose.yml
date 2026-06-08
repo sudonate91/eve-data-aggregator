@@ -30,6 +30,17 @@ services:
       - S0B_MART_DB_NAME=${S0B_MART_DB_NAME}
       - ROOT_USER=${ROOT_USER}
       - ROOT_PASSWORD=${ROOT_PASSWORD}
+      # Non-interactive mode configuration
+      - USE_ENV_CONFIG=${USE_ENV_CONFIG:-true}
+      - RUN_INTERVAL_MINUTES=${RUN_INTERVAL_MINUTES:-60}
+      # Job enable/disable toggles
+      - ENABLE_S0B_WALLET=${ENABLE_S0B_WALLET:-true}
+      - ENABLE_S0B_STRUCT_WALLET=${ENABLE_S0B_STRUCT_WALLET:-false}
+      - ENABLE_VEN0M_WALLET=${ENABLE_VEN0M_WALLET:-false}
+      - ENABLE_KRYTEK_WALLET=${ENABLE_KRYTEK_WALLET:-false}
+      - ENABLE_S0B_MART_WALLET=${ENABLE_S0B_MART_WALLET:-false}
+      - ENABLE_S0B_STRUCT_CONTRACTS=${ENABLE_S0B_STRUCT_CONTRACTS:-false}
+      - ENABLE_CSV_IMPORT=${ENABLE_CSV_IMPORT:-false}
     # For interactive CLI
     stdin_open: true
     tty: true

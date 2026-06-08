@@ -22,6 +22,10 @@ Edit `.env` and replace the placeholder values with your actual:
 - Corporation IDs
 - Database connection details
 - API keys
+- **Job Configuration**: Enable/disable specific import jobs
+- **Run Interval**: Set how often jobs should run (in minutes)
+
+**Important**: For Docker deployment, ensure `USE_ENV_CONFIG=true` to run in non-interactive mode.
 
 ### 2. Build the Docker Image
 
