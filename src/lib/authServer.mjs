@@ -49,8 +49,14 @@ export function configureAuthServer(jobs, port = 3000) {
  */
 export async function allTokensPresent() {
   for (const job of jobRegistry) {
-    const token = await findByJobName(job.jobKey, job.db).catch(() => null);
-    if (!token) return false;
+    try {
+      const { default: defineTokenModel } = await import('../models/tokens.mjs');
+      const TokenModel = defineTokenModel(job.db);
+      const token = await TokenModel.findOne({ where: { job: job.jobKey } });
+      if (!token) return false;
+    } catch {
+      return false;
+    }
   }
   return true;
 }
