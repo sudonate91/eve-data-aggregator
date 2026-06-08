@@ -27,7 +27,7 @@ export async function upsertJournalEntries(entries, sequelizeInstance) {
     return acc;
   }, {});
 
-  await Promise.all(
+  const counts = await Promise.all(
     Object.entries(groupedEntries).map(async ([division, divisionEntries]) => {
       const divisionNum = parseInt(division, 10);
       try {
@@ -40,13 +40,16 @@ export async function upsertJournalEntries(entries, sequelizeInstance) {
             `Bulk upserted ${result.length} entries into ${divisionNum}_journal_entries`,
           ),
         );
+        return result.length;
       } catch (err) {
         console.error(
           chalk.red(
             `Failed to upsert entries into ${divisionNum}_journal_entries: ${err.message}`,
           ),
         );
+        return 0;
       }
     }),
   );
+  return counts.reduce((sum, n) => sum + n, 0);
 }

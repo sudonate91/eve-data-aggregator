@@ -183,7 +183,7 @@ export async function importCorporationContracts(jwt, accessToken, corporationId
 
   if (finishedContracts.length === 0) {
     console.log(chalk.yellow('[Contracts] No recent finished item_exchange contracts found.'));
-    return;
+    return 0;
   }
 
   // ── Step 3: Skip contracts already in DB ─────────────────────────────────
@@ -192,7 +192,7 @@ export async function importCorporationContracts(jwt, accessToken, corporationId
 
   if (newContracts.length === 0) {
     console.log(chalk.green(`[Contracts] All ${finishedContracts.length} finished contract(s) already stored — nothing to do.`));
-    return;
+    return 0;
   }
 
   console.log(chalk.cyan(
@@ -210,7 +210,7 @@ export async function importCorporationContracts(jwt, accessToken, corporationId
 
   if (skyhookContracts.length === 0) {
     console.log(chalk.yellow('[Contracts] No finished Skyhook contracts found this run.'));
-    return;
+    return 0;
   }
 
   console.log(chalk.green(`[Contracts] ${skyhookContracts.length} finished Skyhook contract(s) confirmed`));
@@ -247,4 +247,5 @@ export async function importCorporationContracts(jwt, accessToken, corporationId
 
   const cachedCount = priceCache.size;
   console.log(chalk.blue(`\n[Contracts] Done. ${characterName} — ${contractsToUpsert.length} finished Skyhook contract(s) upserted. Janice cache: ${cachedCount} type(s).`));
+  return contractsToUpsert.length;
 }

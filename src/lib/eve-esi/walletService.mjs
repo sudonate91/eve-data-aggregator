@@ -40,12 +40,12 @@ async function importDivision(corporationId, division, headers, sequelizeInstanc
     ));
   } catch (err) {
     console.error(chalk.red(`[Division ${division}] Failed to fetch page 1: ${err.message}`));
-    return;
+    return 0;
   }
 
   if (firstPageData.length === 0) {
     console.log(chalk.yellow(`[Division ${division}] No entries found.`));
-    return;
+    return 0;
   }
 
   console.log(
@@ -77,7 +77,7 @@ async function importDivision(corporationId, division, headers, sequelizeInstanc
     ),
   );
 
-  await upsertJournalEntries(allEntries, sequelizeInstance);
+  return await upsertJournalEntries(allEntries, sequelizeInstance);
 }
 
 export async function importWalletData(
@@ -89,9 +89,10 @@ export async function importWalletData(
   const characterName = jwt['name'];
   const headers = { Authorization: `Bearer ${accessToken}` };
 
-  await Promise.all(
+  const counts = await Promise.all(
     Array.from({ length: 7 }, (_, i) => i + 1).map((division) =>
       importDivision(corporationId, division, headers, sequelizeInstance, characterName),
     ),
   );
+  return counts.reduce((sum, n) => sum + (n ?? 0), 0);
 }

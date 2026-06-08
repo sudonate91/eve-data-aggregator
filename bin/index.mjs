@@ -119,12 +119,17 @@ const getJobSelections = async () => {
 };
 
 async function runJob(label, fn) {
+  const start = Date.now();
   try {
     console.log(chalk.blue(`🔄 Starting ${label}...`));
-    await fn();
+    const count = await fn();
+    const duration = ((Date.now() - start) / 1000).toFixed(1);
     console.log(chalk.green(`✓ ${label} completed successfully.`));
+    return { label, status: 'ok', duration, count };
   } catch (error) {
+    const duration = ((Date.now() - start) / 1000).toFixed(1);
     console.error(chalk.red(`✗ Error during ${label}: ${error.message}`));
+    return { label, status: 'error', duration, error: error.message };
   }
 }
 
@@ -136,42 +141,42 @@ const runJobs = async () => {
   if (jobSelections.importS0bHoldingsWalletData) {
     jobs.push(runJob('S0b Holdings wallet import', async () => {
       const { jwt, accessToken } = await runOAuthFlow('importS0bHoldingsWalletData', sequelize);
-      await importWalletData(jwt, accessToken, sequelize, process.env.CORPORATION_ID);
+      return importWalletData(jwt, accessToken, sequelize, process.env.CORPORATION_ID);
     }));
   }
 
   if (jobSelections.importS0bStructureManagementWalletData) {
     jobs.push(runJob('S0b Structure Management wallet import', async () => {
       const { jwt, accessToken } = await runOAuthFlow('importS0bStructureManagementWalletData', structSequelize);
-      await importWalletData(jwt, accessToken, structSequelize, process.env.STRUCT_CORPORATION_ID);
+      return importWalletData(jwt, accessToken, structSequelize, process.env.STRUCT_CORPORATION_ID);
     }));
   }
 
   if (jobSelections.importVen0mWalletData) {
     jobs.push(runJob('Ven0m wallet import', async () => {
       const { jwt, accessToken } = await runOAuthFlow('importVen0mWalletData', ven0mSequelize);
-      await importWalletData(jwt, accessToken, ven0mSequelize, process.env.VEN0M_CORPORATION_ID);
+      return importWalletData(jwt, accessToken, ven0mSequelize, process.env.VEN0M_CORPORATION_ID);
     }));
   }
 
   if (jobSelections.importKryTekWalletData) {
     jobs.push(runJob('KryTek wallet import', async () => {
       const { jwt, accessToken } = await runOAuthFlow('importKryTekWalletData', krytekSequelize);
-      await importWalletData(jwt, accessToken, krytekSequelize, process.env.KRYTEK_CORPORATION_ID);
+      return importWalletData(jwt, accessToken, krytekSequelize, process.env.KRYTEK_CORPORATION_ID);
     }));
   }
 
   if (jobSelections.importS0bMartWalletData) {
     jobs.push(runJob('S0b-Mart wallet import', async () => {
       const { jwt, accessToken } = await runOAuthFlow('importS0bMartWalletData', s0bMartSequelize);
-      await importWalletData(jwt, accessToken, s0bMartSequelize, process.env.S0B_MART_CORPORATION_ID);
+      return importWalletData(jwt, accessToken, s0bMartSequelize, process.env.S0B_MART_CORPORATION_ID);
     }));
   }
 
   if (jobSelections.importS0bStructContracts) {
     jobs.push(runJob('S0b_Struct contracts import', async () => {
       const { jwt, accessToken } = await runOAuthFlow('importS0bStructContracts', structSequelize);
-      await importCorporationContracts(jwt, accessToken, process.env.STRUCT_CORPORATION_ID, structSequelize);
+      return importCorporationContracts(jwt, accessToken, process.env.STRUCT_CORPORATION_ID, structSequelize);
     }));
   }
 
@@ -179,7 +184,23 @@ const runJobs = async () => {
     jobs.push(runJob('CSV import', () => importCsvToDb()));
   }
 
-  await Promise.allSettled(jobs);
+  const results = await Promise.allSettled(jobs);
+
+  const now = new Date().toLocaleTimeString();
+  console.log(chalk.bold(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
+  console.log(chalk.bold(`📋 Run Summary — ${now}`));
+  console.log(chalk.bold(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
+  for (const settled of results) {
+    const r = settled.value;
+    if (!r) continue;
+    const icon = r.status === 'ok' ? chalk.green('✓') : chalk.red('✗');
+    const label = r.status === 'ok' ? chalk.green(r.label) : chalk.red(r.label);
+    const time = chalk.gray(`(${r.duration}s)`);
+    const updated = r.count != null ? chalk.cyan(` — ${r.count} updated`) : '';
+    const err = r.error ? chalk.red(` — ${r.error}`) : '';
+    console.log(`  ${icon} ${label} ${time}${updated}${err}`);
+  }
+  console.log(chalk.bold(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`));
 };
 
 const initialize = async () => {
