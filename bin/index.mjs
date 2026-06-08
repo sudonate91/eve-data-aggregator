@@ -136,48 +136,51 @@ async function runJob(label, fn) {
 const runJobs = async () => {
   const jobSelections = await getJobSelections();
 
-  const jobs = [];
+  // ── Phase 1: Auth — sequential so prompts never collide ──────────────────
+  // Each entry: { label, jobKey, db, corpId, dataFn }
+  const jobDefs = [];
 
   if (jobSelections.importS0bHoldingsWalletData) {
-    jobs.push(runJob('S0b Holdings wallet import', async () => {
-      const { jwt, accessToken } = await runOAuthFlow('importS0bHoldingsWalletData', sequelize);
-      return importWalletData(jwt, accessToken, sequelize, process.env.CORPORATION_ID);
-    }));
+    jobDefs.push({ label: 'S0b Holdings wallet import', jobKey: 'importS0bHoldingsWalletData', db: sequelize, corpId: process.env.CORPORATION_ID, dataFn: (jwt, token) => importWalletData(jwt, token, sequelize, process.env.CORPORATION_ID) });
   }
-
   if (jobSelections.importS0bStructureManagementWalletData) {
-    jobs.push(runJob('S0b Structure Management wallet import', async () => {
-      const { jwt, accessToken } = await runOAuthFlow('importS0bStructureManagementWalletData', structSequelize);
-      return importWalletData(jwt, accessToken, structSequelize, process.env.STRUCT_CORPORATION_ID);
-    }));
+    jobDefs.push({ label: 'S0b Structure Management wallet import', jobKey: 'importS0bStructureManagementWalletData', db: structSequelize, corpId: process.env.STRUCT_CORPORATION_ID, dataFn: (jwt, token) => importWalletData(jwt, token, structSequelize, process.env.STRUCT_CORPORATION_ID) });
   }
-
   if (jobSelections.importVen0mWalletData) {
-    jobs.push(runJob('Ven0m wallet import', async () => {
-      const { jwt, accessToken } = await runOAuthFlow('importVen0mWalletData', ven0mSequelize);
-      return importWalletData(jwt, accessToken, ven0mSequelize, process.env.VEN0M_CORPORATION_ID);
-    }));
+    jobDefs.push({ label: 'Ven0m wallet import', jobKey: 'importVen0mWalletData', db: ven0mSequelize, corpId: process.env.VEN0M_CORPORATION_ID, dataFn: (jwt, token) => importWalletData(jwt, token, ven0mSequelize, process.env.VEN0M_CORPORATION_ID) });
   }
-
   if (jobSelections.importKryTekWalletData) {
-    jobs.push(runJob('KryTek wallet import', async () => {
-      const { jwt, accessToken } = await runOAuthFlow('importKryTekWalletData', krytekSequelize);
-      return importWalletData(jwt, accessToken, krytekSequelize, process.env.KRYTEK_CORPORATION_ID);
-    }));
+    jobDefs.push({ label: 'KryTek wallet import', jobKey: 'importKryTekWalletData', db: krytekSequelize, corpId: process.env.KRYTEK_CORPORATION_ID, dataFn: (jwt, token) => importWalletData(jwt, token, krytekSequelize, process.env.KRYTEK_CORPORATION_ID) });
   }
-
   if (jobSelections.importS0bMartWalletData) {
-    jobs.push(runJob('S0b-Mart wallet import', async () => {
-      const { jwt, accessToken } = await runOAuthFlow('importS0bMartWalletData', s0bMartSequelize);
-      return importWalletData(jwt, accessToken, s0bMartSequelize, process.env.S0B_MART_CORPORATION_ID);
-    }));
+    jobDefs.push({ label: 'S0b-Mart wallet import', jobKey: 'importS0bMartWalletData', db: s0bMartSequelize, corpId: process.env.S0B_MART_CORPORATION_ID, dataFn: (jwt, token) => importWalletData(jwt, token, s0bMartSequelize, process.env.S0B_MART_CORPORATION_ID) });
+  }
+  if (jobSelections.importS0bStructContracts) {
+    jobDefs.push({ label: 'S0b_Struct contracts import', jobKey: 'importS0bStructContracts', db: structSequelize, corpId: process.env.STRUCT_CORPORATION_ID, dataFn: (jwt, token) => importCorporationContracts(jwt, token, process.env.STRUCT_CORPORATION_ID, structSequelize) });
   }
 
-  if (jobSelections.importS0bStructContracts) {
-    jobs.push(runJob('S0b_Struct contracts import', async () => {
-      const { jwt, accessToken } = await runOAuthFlow('importS0bStructContracts', structSequelize);
-      return importCorporationContracts(jwt, accessToken, process.env.STRUCT_CORPORATION_ID, structSequelize);
-    }));
+  // Auth sequentially — one prompt at a time
+  const authResults = [];
+  for (const job of jobDefs) {
+    try {
+      console.log(chalk.bold.cyan(`\n🔐 Authenticating: ${job.label}`));
+      const { jwt, accessToken } = await runOAuthFlow(job.jobKey, job.db);
+      authResults.push({ ...job, jwt, accessToken, authOk: true });
+    } catch (err) {
+      console.error(chalk.red(`✗ Auth failed for ${job.label}: ${err.message}`));
+      authResults.push({ ...job, authOk: false, authError: err.message });
+    }
+  }
+
+  // ── Phase 2: Data import — parallel now that all tokens are ready ─────────
+  const jobs = [];
+
+  for (const job of authResults) {
+    if (!job.authOk) {
+      jobs.push(Promise.resolve({ label: job.label, status: 'error', duration: '0.0', error: job.authError }));
+      continue;
+    }
+    jobs.push(runJob(job.label, () => job.dataFn(job.jwt, job.accessToken)));
   }
 
   if (jobSelections.importCsvToDb) {

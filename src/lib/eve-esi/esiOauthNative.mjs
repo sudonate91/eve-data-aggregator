@@ -7,7 +7,6 @@ import inquirer from 'inquirer';
 import { findByJobName, upsertAuthData } from '../service/tokenService.mjs'; // Adjust the path as necessary
 
 export async function runOAuthFlow(job, sequelizeInstance) {
-  console.log(chalk.blue(`Running auth for job: ${job}`));
   const existingToken = await findByJobName(job, sequelizeInstance);
   if (existingToken) {
     const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds since epoch
