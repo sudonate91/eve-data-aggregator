@@ -268,14 +268,21 @@ async function handleDbStatus(req, res) {
   const results = await Promise.all(ALL_DBS.map(async (db) => {
     try {
       const sequelize = await DB_SEQUELIZE_MAP[db]();
-      const journalTable = db === 'S0b_Struct' ? 'contracts' : '1_journal_entries';
       const [[jRow], [tRow]] = await Promise.all([
-        sequelize.query(`SELECT COUNT(*) AS cnt FROM \`${journalTable}\``, { type: QueryTypes.SELECT }),
-        sequelize.query(`SELECT COUNT(*) AS cnt FROM tokens`, { type: QueryTypes.SELECT }),
+        sequelize.query('SELECT COUNT(*) AS cnt FROM `1_journal_entries`', { type: QueryTypes.SELECT }),
+        sequelize.query('SELECT COUNT(*) AS cnt FROM `tokens`', { type: QueryTypes.SELECT }),
       ]);
-      return { db, journalRows: Number(jRow.cnt), tokenRows: Number(tRow.cnt) };
+      let journalRows = Number(jRow.cnt);
+      let contractRows = 0;
+      if (db === 'S0b_Struct') {
+        try {
+          const [[cRow]] = await sequelize.query('SELECT COUNT(*) AS cnt FROM `contract`', { type: QueryTypes.SELECT });
+          contractRows = Number(cRow.cnt);
+        } catch { contractRows = -1; }
+      }
+      return { db, journalRows, tokenRows: Number(tRow.cnt), contractRows: db === 'S0b_Struct' ? contractRows : null };
     } catch {
-      return { db, journalRows: -1, tokenRows: -1 };
+      return { db, journalRows: -1, tokenRows: -1, contractRows: null };
     }
   }));
 
@@ -368,9 +375,10 @@ async function loadDbStatus(){
     const r=await fetch('/db-status');
     const data=await r.json();
     document.getElementById('db-status-body').innerHTML=data.map(d=>{
-      const jCell=d.journalRows<0?'<span class="na">No table yet</span>':d.journalRows>0?'<span class="ok">\\u2713 '+d.journalRows.toLocaleString()+' rows</span>':'<span class="need">\\u2717 Empty</span>';
+      const jCell=d.journalRows<0?'<span class="na">No table yet</span>':d.journalRows>0?'<span class="ok">\\u2713 '+d.journalRows.toLocaleString()+' journal rows</span>':'<span class="need">\\u2717 Empty</span>';
+      const cExtra=d.contractRows===null?'':d.contractRows<0?' / <span class="na">no contract table</span>':d.contractRows>0?' + <span class="ok">'+d.contractRows.toLocaleString()+' contracts</span>':' + <span class="need">0 contracts</span>';
       const tCell=d.tokenRows<0?'<span class="na">\\u2014</span>':d.tokenRows>0?'<span class="ok">\\u2713 '+d.tokenRows+' token(s)</span>':'<span class="na">\\u2014</span>';
-      return '<tr><td>'+d.db+'</td><td>'+jCell+'</td><td>'+tCell+'</td></tr>';
+      return '<tr><td>'+d.db+'</td><td>'+jCell+cExtra+'</td><td>'+tCell+'</td></tr>';
     }).join('');
   }catch(e){
     document.getElementById('db-status-body').innerHTML='<tr><td colspan="3" class="need">Error: '+e.message+'</td></tr>';
