@@ -86,6 +86,8 @@ export async function startAuthServer() {
         await handleMigrate(req, res);
       } else if (req.method === 'GET' && reqUrl.pathname === '/db-status') {
         await handleDbStatus(req, res);
+      } else if (req.method === 'GET' && reqUrl.pathname === '/app.js') {
+        handleAppJs(req, res);
       } else {
         res.writeHead(404);
         res.end('Not found');
@@ -247,58 +249,7 @@ async function handleDashboard(req, res) {
   </div>
 </div>
 
-<script>
-let reloadTimer=setTimeout(()=>location.reload(),30000);
-function showTab(name,btn){
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
-  btn.classList.add('active');
-  if(name==='migrate'){clearTimeout(reloadTimer);loadDbStatus();}
-}
-function fileSelected(input){
-  const f=input.files[0];
-  document.getElementById('file-label').textContent=f?f.name+' ('+(f.size/1024/1024).toFixed(1)+' MB)':'No file selected';
-  document.getElementById('upload-btn').disabled=!f;
-}
-async function loadDbStatus(){
-  try{
-    const r=await fetch('/db-status');
-    const data=await r.json();
-    document.getElementById('db-status-body').innerHTML=data.map(d=>{
-      const jCell = d.journalRows<0 ? '<span class="na">No table yet</span>' : d.journalRows>0 ? '<span class="ok">✓ '+d.journalRows.toLocaleString()+' rows</span>' : '<span class="need">✗ Empty</span>';
-      const tCell = d.tokenRows<0 ? '<span class="na">—</span>' : d.tokenRows>0 ? '<span class="ok">✓ '+d.tokenRows+' token(s)</span>' : '<span class="na">—</span>';
-      return '<tr><td>'+d.db+'</td><td>'+jCell+'</td><td>'+tCell+'</td></tr>';
-    }).join('');
-  }catch(e){
-    document.getElementById('db-status-body').innerHTML='<tr><td colspan="3" class="need">Error: '+e.message+'</td></tr>';
-  }
-}
-async function startMigration(){
-  const file=document.getElementById('sql-file').files[0];
-  if(!file)return;
-  const btn=document.getElementById('upload-btn');
-  btn.disabled=true;btn.textContent='Importing...';
-  const box=document.getElementById('progress-box');
-  box.style.display='block';box.textContent='Starting import...\n';
-  try{
-    const fd=new FormData();fd.append('file',file);
-    const resp=await fetch('/migrate',{method:'POST',body:fd});
-    const reader=resp.body.getReader();const dec=new TextDecoder();
-    while(true){
-      const{done,value}=await reader.read();
-      if(done)break;
-      box.textContent+=dec.decode(value);box.scrollTop=box.scrollHeight;
-    }
-    box.textContent+='\n✓ Import complete.';
-    btn.textContent='Done ✓';
-    loadDbStatus();
-  }catch(e){
-    box.textContent+='\nERROR: '+e.message;
-    btn.disabled=false;btn.textContent='Retry';
-  }
-}
-${'</script>'}
+<script src="/app.js"></script>
 </body></html>`;
 
   res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -395,6 +346,62 @@ async function handleMigrate(req, res) {
     }
     res.end();
   });
+}
+
+function handleAppJs(req, res) {
+  const js = `
+let reloadTimer=setTimeout(()=>location.reload(),30000);
+function showTab(name,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='migrate'){clearTimeout(reloadTimer);loadDbStatus();}
+}
+function fileSelected(input){
+  const f=input.files[0];
+  document.getElementById('file-label').textContent=f?f.name+' ('+(f.size/1024/1024).toFixed(1)+' MB)':'No file selected';
+  document.getElementById('upload-btn').disabled=!f;
+}
+async function loadDbStatus(){
+  try{
+    const r=await fetch('/db-status');
+    const data=await r.json();
+    document.getElementById('db-status-body').innerHTML=data.map(d=>{
+      const jCell=d.journalRows<0?'<span class="na">No table yet</span>':d.journalRows>0?'<span class="ok">\\u2713 '+d.journalRows.toLocaleString()+' rows</span>':'<span class="need">\\u2717 Empty</span>';
+      const tCell=d.tokenRows<0?'<span class="na">\\u2014</span>':d.tokenRows>0?'<span class="ok">\\u2713 '+d.tokenRows+' token(s)</span>':'<span class="na">\\u2014</span>';
+      return '<tr><td>'+d.db+'</td><td>'+jCell+'</td><td>'+tCell+'</td></tr>';
+    }).join('');
+  }catch(e){
+    document.getElementById('db-status-body').innerHTML='<tr><td colspan="3" class="need">Error: '+e.message+'</td></tr>';
+  }
+}
+async function startMigration(){
+  const file=document.getElementById('sql-file').files[0];
+  if(!file)return;
+  const btn=document.getElementById('upload-btn');
+  btn.disabled=true;btn.textContent='Importing...';
+  const box=document.getElementById('progress-box');
+  box.style.display='block';box.textContent='Starting import...\\n';
+  try{
+    const fd=new FormData();fd.append('file',file);
+    const resp=await fetch('/migrate',{method:'POST',body:fd});
+    const reader=resp.body.getReader();const dec=new TextDecoder();
+    while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      box.textContent+=dec.decode(value);box.scrollTop=box.scrollHeight;
+    }
+    box.textContent+='\\n\\u2713 Import complete.';
+    btn.textContent='Done \\u2713';
+    loadDbStatus();
+  }catch(e){
+    box.textContent+='\\nERROR: '+e.message;
+    btn.disabled=false;btn.textContent='Retry';
+  }
+}`;
+  res.writeHead(200, { 'Content-Type': 'application/javascript' });
+  res.end(js);
 }
 
 async function handleAuth(req, res, jobKey) {
