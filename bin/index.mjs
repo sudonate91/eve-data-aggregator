@@ -311,7 +311,7 @@ const main = async () => {
     if (!ready) {
       console.log(chalk.bold.yellow(
         `\n⚠  Some corps are not authenticated yet.\n` +
-        `   Open http://<your-ip>:${authPort} in a browser and authenticate each corp.\n` +
+        `   Open https://<your-ip>:${authPort} in a browser and authenticate each corp.\n` +
         `   Jobs will start automatically once all tokens are present.\n`
       ));
       await new Promise((resolve) => {

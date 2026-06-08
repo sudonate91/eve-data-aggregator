@@ -13,11 +13,12 @@
  *   GET  /db-status  — JSON: row counts per database
  */
 
-import http from 'http';
+import https from 'https';
 import crypto from 'crypto';
 import { spawn } from 'child_process';
 import { URLSearchParams, URL } from 'url';
 import fetch from 'node-fetch';
+import selfsigned from 'selfsigned';
 import { validateEveJwt } from './eve-esi/validateJwt.mjs';
 import { findByJobName, upsertAuthData } from './service/tokenService.mjs';
 import chalk from 'chalk';
@@ -65,8 +66,13 @@ export async function allTokensPresent() {
  * Start the HTTP auth server. Returns the server instance.
  */
 export function startAuthServer() {
-  const server = http.createServer(async (req, res) => {
-    const reqUrl = new URL(req.url, `http://localhost:${serverPort}`);
+  const attrs = [{ name: 'commonName', value: 'localhost' }];
+  const pems = selfsigned.generate(attrs, { days: 3650, keySize: 2048 });
+
+  const server = https.createServer(
+    { key: pems.private, cert: pems.cert },
+    async (req, res) => {
+    const reqUrl = new URL(req.url, `https://localhost:${serverPort}`);
 
     try {
       if (req.method === 'GET' && reqUrl.pathname === '/') {
@@ -92,8 +98,8 @@ export function startAuthServer() {
   });
 
   server.listen(serverPort, '0.0.0.0', () => {
-    console.log(chalk.bold.cyan(`\n🌐 Auth server listening on http://0.0.0.0:${serverPort}`));
-    console.log(chalk.cyan(`   Open http://<your-ip>:${serverPort} in a browser to set up the app.\n`));
+    console.log(chalk.bold.cyan(`\n🌐 Auth server listening on https://0.0.0.0:${serverPort}`));
+    console.log(chalk.cyan(`   Open https://localhost:${serverPort} in a browser (accept the self-signed cert warning).\n`));
   });
 
   return server;
