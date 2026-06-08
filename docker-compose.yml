@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # Main application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: eve-data-aggregator
+    environment:
+      # Load from .env file
+      - CLIENT_ID=${CLIENT_ID}
+      - CALLBACK_URL=${CALLBACK_URL}
+      - SCOPE=${SCOPE}
+      - STATE=${STATE}
+      - CORPORATION_ID=${CORPORATION_ID}
+      - STRUCT_CORPORATION_ID=${STRUCT_CORPORATION_ID}
+      - VEN0M_CORPORATION_ID=${VEN0M_CORPORATION_ID}
+      - KRYTEK_CORPORATION_ID=${KRYTEK_CORPORATION_ID}
+      - S0B_MART_CORPORATION_ID=${S0B_MART_CORPORATION_ID}
+      - JANICE_API_KEY=${JANICE_API_KEY}
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - S0b_STRUCT_DB_NAME=${S0b_STRUCT_DB_NAME}
+      - VEN0M_DB_NAME=${VEN0M_DB_NAME}
+      - KRYTEK_DB_NAME=${KRYTEK_DB_NAME}
+      - S0B_MART_DB_NAME=${S0B_MART_DB_NAME}
+      - ROOT_USER=${ROOT_USER}
+      - ROOT_PASSWORD=${ROOT_PASSWORD}
+      # Non-interactive mode configuration
+      - USE_ENV_CONFIG=${USE_ENV_CONFIG:-true}
+      - RUN_INTERVAL_MINUTES=${RUN_INTERVAL_MINUTES:-60}
+      # Job enable/disable toggles
+      - ENABLE_S0B_WALLET=${ENABLE_S0B_WALLET:-true}
+      - ENABLE_S0B_STRUCT_WALLET=${ENABLE_S0B_STRUCT_WALLET:-false}
+      - ENABLE_VEN0M_WALLET=${ENABLE_VEN0M_WALLET:-false}
+      - ENABLE_KRYTEK_WALLET=${ENABLE_KRYTEK_WALLET:-false}
+      - ENABLE_S0B_MART_WALLET=${ENABLE_S0B_MART_WALLET:-false}
+      - ENABLE_S0B_STRUCT_CONTRACTS=${ENABLE_S0B_STRUCT_CONTRACTS:-false}
+      - ENABLE_CSV_IMPORT=${ENABLE_CSV_IMPORT:-false}
+    # For interactive CLI
+    stdin_open: true
+    tty: true
+    # For Unraid: use host network mode to access localhost databases
+    network_mode: "host"
+    # For non-Unraid: comment out network_mode above and uncomment networks below
+    # networks:
+    #   - eve-network
+    restart: unless-stopped
+    # Mount volume for persistent data if needed
+    # volumes:
+    #   - ./data:/app/data
+
+  # Optional: MySQL database for local development/testing
+  # Uncomment if you want to run MySQL in Docker instead of using external DB
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: eve-mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
+  #     MYSQL_DATABASE: ${DB_NAME}
+  #     MYSQL_USER: ${DB_USER}
+  #     MYSQL_PASSWORD: ${DB_PASSWORD}
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   networks:
+  #     - eve-network
+  #   restart: unless-stopped
+  #   command: --default-authentication-plugin=mysql_native_password
+
+networks:
+  eve-network:
+    driver: bridge
+
+# Uncomment if using local MySQL
+# volumes:
+#   mysql_data:

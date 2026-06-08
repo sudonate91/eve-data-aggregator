@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { upsertContracts } from '../service/contractService.mjs';
+import { esiRequest } from '../../utils/esiClient.mjs';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -62,7 +63,7 @@ export async function importCorporationContracts(jwt, accessToken, corporationId
     };
 
     try {
-      const res = await fetchWithRetry(contractsUrl, { headers });
+      const res = await esiRequest(contractsUrl, { headers });
       console.log(
         chalk.cyan(
           `\nMade request to ${contractsUrl} with headers: ${JSON.stringify(
@@ -127,7 +128,7 @@ export async function importCorporationContracts(jwt, accessToken, corporationId
 
         // Fetch issuer character info
         const characterUrl = `https://esi.evetech.net/latest/characters/${contract.issuer_id}/?datasource=tranquility`;
-        const characterRes = await fetchWithRetry(characterUrl, { headers });
+        const characterRes = await esiRequest(characterUrl, { headers });
         let characterInfo = {};
         if (characterRes.ok) {
           characterInfo = await characterRes.json();
@@ -135,7 +136,7 @@ export async function importCorporationContracts(jwt, accessToken, corporationId
 
         // Fetch contract items
         const itemsUrl = `https://esi.evetech.net/latest/corporations/${corporationId}/contracts/${contract.contract_id}/items/?datasource=tranquility`;
-        const itemsRes = await fetchWithRetry(itemsUrl, { headers });
+        const itemsRes = await esiRequest(itemsUrl, { headers });
         let items = [];
         if (itemsRes.ok) {
           items = await itemsRes.json();
@@ -292,29 +293,4 @@ const calculateContractValue = async (items) => {
   return Math.round(totalValue * 100) / 100;
 };
 
-const fetchWithRetry = async (url, options, retries = 3) => {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(url, options);
-      if (res.status === 504) {
-        const body = await res.json();
-        if (
-          body.error === 'Timeout contacting tranquility' &&
-          body.timeout === 10
-        ) {
-          if (attempt < retries) {
-            console.log(`Retrying... Attempt ${attempt} of ${retries}`);
-            continue;
-          } else {
-            throw new Error(`Failed after ${retries} attempts`);
-          }
-        }
-      }
-      return res;
-    } catch (error) {
-      if (attempt >= retries) {
-        throw error;
-      }
-    }
-  }
-};
+// fetchWithRetry replaced by esiClient

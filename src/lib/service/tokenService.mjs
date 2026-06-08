@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 
 async function getTokenModel(sequelizeInstance) {
-  const modelModule = await import(`../../models/Tokens.mjs`);
+  const modelModule = await import(`../../models/tokens.mjs`);
   const defineModel = modelModule.default;
   return defineModel(sequelizeInstance);
 }
