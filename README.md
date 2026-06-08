@@ -2,11 +2,16 @@
 
 A CLI tool for importing EVE Online corporation wallet and contract data from the ESI API to MySQL databases.
 
-## Deployment Options
+## Installation
 
-- **🐳 [Docker Deployment](DOCKER.md)** - Run with Docker or Docker Compose
-- **🖥️ [Unraid Deployment](UNRAID.md)** - Deploy on Unraid with WebUI configuration (Recommended for Unraid users)
-- **📦 Native Node.js** - Install and run directly with Node.js (see below)
+Choose your preferred installation method:
+
+- **🚀 [Quick Install Guide](INSTALL.md)** - All installation methods in one place
+- **🐳 [Docker Hub](INSTALL.md#option-1-docker-hub-recommended)** - Pull pre-built image (easiest!)
+- **📦 [Git + Docker](INSTALL.md#option-2-git--docker-compose)** - Clone and build locally
+- **🖥️ [Unraid](UNRAID.md)** - Deploy on Unraid with WebUI configuration
+- **📚 [Docker Details](DOCKER.md)** - Advanced Docker configuration
+- **⚙️ Native Node.js** - Install and run directly with Node.js (see below)
 
 ## Prerequisites
 

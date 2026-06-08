@@ -1,19 +1,19 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>eve-data-aggregator</Name>
-  <Repository>eve-data-aggregator:latest</Repository>
-  <Registry>https://hub.docker.com/</Registry>
+  <Repository>sudonate91/eve-data-aggregator:latest</Repository>
+  <Registry>https://hub.docker.com/r/sudonate91/eve-data-aggregator</Registry>
   <Network>host</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Support>https://github.com/yourusername/eve-data-aggregator</Support>
-  <Project>https://github.com/yourusername/eve-data-aggregator</Project>
+  <Support>https://github.com/sudonate91/eve-data-aggregator</Support>
+  <Project>https://github.com/sudonate91/eve-data-aggregator</Project>
   <Overview>EVE Online Data Aggregator - CLI tool for importing corporation wallet and contract data from EVE Online ESI API to MySQL databases.</Overview>
   <Category>Tools:</Category>
   <WebUI/>
   <TemplateURL/>
-  <Icon>https://raw.githubusercontent.com/yourusername/eve-data-aggregator/main/icon.png</Icon>
+  <Icon>https://raw.githubusercontent.com/sudonate91/eve-data-aggregator/main/icon.png</Icon>
   <ExtraParams>-it</ExtraParams>
   <PostArgs/>
   <CPUset/>
