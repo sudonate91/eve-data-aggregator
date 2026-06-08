@@ -248,12 +248,13 @@ async function handleDashboard(req, res) {
 </div>
 
 <script>
+let reloadTimer=setTimeout(()=>location.reload(),30000);
 function showTab(name,btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
-  if(name==='migrate')loadDbStatus();
+  if(name==='migrate'){clearTimeout(reloadTimer);loadDbStatus();}
 }
 function fileSelected(input){
   const f=input.files[0];
@@ -269,7 +270,9 @@ async function loadDbStatus(){
       const tCell = d.tokenRows<0 ? '<span class="na">—</span>' : d.tokenRows>0 ? '<span class="ok">✓ '+d.tokenRows+' token(s)</span>' : '<span class="na">—</span>';
       return '<tr><td>'+d.db+'</td><td>'+jCell+'</td><td>'+tCell+'</td></tr>';
     }).join('');
-  }catch(e){}
+  }catch(e){
+    document.getElementById('db-status-body').innerHTML='<tr><td colspan="3" class="need">Error: '+e.message+'</td></tr>';
+  }
 }
 async function startMigration(){
   const file=document.getElementById('sql-file').files[0];
@@ -295,7 +298,6 @@ async function startMigration(){
     btn.disabled=false;btn.textContent='Retry';
   }
 }
-setTimeout(()=>location.reload(),30000);
 <\/script>
 </body></html>`;
 
