@@ -298,7 +298,7 @@ async function startMigration(){
     btn.disabled=false;btn.textContent='Retry';
   }
 }
-<\/script>
+${'</script>'}
 </body></html>`;
 
   res.writeHead(200, { 'Content-Type': 'text/html' });
