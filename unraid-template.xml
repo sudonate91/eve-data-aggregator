@@ -21,8 +21,9 @@
   <DonateText/>
   <DonateLink/>
   <Requires>MySQL and the app run inside this single container. No separate MySQL container needed. After first install, open the Web UI (port 3000) to authenticate corps and optionally import existing data. Add http://&lt;unraid-ip&gt;:3000/callback to your EVE ESI application callback list.</Requires>
-  <Config Name="Auth Web UI Port" Target="AUTH_PORT" Default="3000" Mode="tcp" Description="Port for the setup &amp; auth web UI. Open http://&lt;unraid-ip&gt;:3000 after first install." Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="Auth Web UI Port" Target="3000" Default="3000" Mode="tcp" Description="Port for the setup &amp; auth web UI. Open http://&lt;unraid-ip&gt;:3000 after first install." Type="Port" Display="always" Required="true" Mask="false"/>
   <Config Name="MySQL External Port" Target="3307" Default="3307" Mode="tcp" Description="External port for MySQL — connect Workbench or PowerBI to &lt;unraid-ip&gt;:3307" Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="MySQL Data" Target="/var/lib/mysql" Default="" Mode="rw" Description="MySQL data directory — leave blank to use an auto-managed Docker named volume (recommended)." Type="Path" Display="advanced" Required="false" Mask="false"/>
   <Config Name="MySQL Root Password" Target="MYSQL_ROOT_PASSWORD" Default="" Mode="" Description="MySQL root password — used for init, migration import, and Workbench root access. Keep it safe." Type="Variable" Display="always" Required="true" Mask="true"/>
   <Config Name="MySQL Readonly Password" Target="MYSQL_READONLY_PASSWORD" Default="" Mode="" Description="Password for the eve_readonly PowerBI user. If blank, DB_PASSWORD is used." Type="Variable" Display="always" Required="false" Mask="true"/>
   <Config Name="EVE Client ID" Target="CLIENT_ID" Default="" Mode="" Description="Your EVE Online ESI Application Client ID" Type="Variable" Display="always" Required="true" Mask="false"/>
