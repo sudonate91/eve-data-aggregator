@@ -9,7 +9,7 @@ Choose your preferred installation method:
 - **🚀 [Quick Install Guide](INSTALL.md)** - All installation methods in one place
 - **🐳 [Docker Hub](INSTALL.md#option-1-docker-hub-recommended)** - Pull pre-built image (easiest!)
 - **📦 [Git + Docker](INSTALL.md#option-2-git--docker-compose)** - Clone and build locally
-- **🖥️ [Unraid](UNRAID.md)** - Deploy on Unraid with WebUI configuration
+- **🖥️ [Unraid](UNRAID.md)** - Pull from Docker Hub, configure via WebUI, one-click updates
 - **📚 [Docker Details](DOCKER.md)** - Advanced Docker configuration
 - **⚙️ Native Node.js** - Install and run directly with Node.js (see below)
 

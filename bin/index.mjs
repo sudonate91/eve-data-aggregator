@@ -190,17 +190,31 @@ const runJobs = async () => {
   console.log(chalk.bold(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
   console.log(chalk.bold(`📋 Run Summary — ${now}`));
   console.log(chalk.bold(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
+
+  const runTotals = new Map();
   for (const settled of results) {
     const r = settled.value;
     if (!r) continue;
     const icon = r.status === 'ok' ? chalk.green('✓') : chalk.red('✗');
     const label = r.status === 'ok' ? chalk.green(r.label) : chalk.red(r.label);
     const time = chalk.gray(`(${r.duration}s)`);
-    const updated = r.count != null ? chalk.cyan(` — ${r.count} updated`) : '';
+    let inserted = 0;
+    let updated = '';
+    if (r.count != null) {
+      if (typeof r.count === 'object') {
+        inserted = r.count.inserted;
+        updated = chalk.cyan(` — ${r.count.inserted} new, ${r.count.updated} updated`);
+      } else {
+        inserted = r.count;
+        updated = chalk.cyan(` — ${r.count} new`);
+      }
+    }
+    runTotals.set(r.label, inserted);
     const err = r.error ? chalk.red(` — ${r.error}`) : '';
     console.log(`  ${icon} ${label} ${time}${updated}${err}`);
   }
   console.log(chalk.bold(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`));
+  return runTotals;
 };
 
 const initialize = async () => {
@@ -286,15 +300,29 @@ const main = async () => {
   await runJobs();
 
   let iterationCount = 0;
+  const cumulativeTotals = new Map();
+
+  const printCumulative = () => {
+    if (cumulativeTotals.size === 0) return;
+    console.log(chalk.bold.magenta(`\n📈 Cumulative new records this session (${iterationCount} run(s)):  `));
+    for (const [label, total] of cumulativeTotals) {
+      console.log(chalk.magenta(`     ${label}: ${total}`));
+    }
+    console.log();
+  };
 
   if (intervalMs) {
     const scheduleNext = async () => {
       iterationCount++;
       console.log(chalk.blue(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
-      console.log(chalk.blue(`📊 Iteration count: ${iterationCount}`));
+      console.log(chalk.blue(`📊 Run #${iterationCount} — ${new Date().toLocaleTimeString()}`));
       console.log(chalk.blue(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`));
-      await runJobs();
-      console.log(chalk.yellow(`\n🔄 Next run in ${intervalMs / 60000} minutes...\n`));
+      const runTotals = await runJobs();
+      for (const [label, inserted] of runTotals) {
+        cumulativeTotals.set(label, (cumulativeTotals.get(label) ?? 0) + inserted);
+      }
+      printCumulative();
+      console.log(chalk.yellow(`🔄 Next run in ${intervalMs / 60000} minutes...\n`));
       setTimeout(scheduleNext, intervalMs);
     };
     console.log(chalk.yellow(`\n🔄 Next run in ${intervalMs / 60000} minutes...\n`));
