@@ -13,6 +13,7 @@
  *   GET  /db-status  — JSON: row counts per database
  */
 
+import http from 'http';
 import https from 'https';
 import crypto from 'crypto';
 import { spawn } from 'child_process';
@@ -66,24 +67,12 @@ export async function allTokensPresent() {
  * Start the HTTP auth server. Returns the server instance.
  */
 export async function startAuthServer() {
-  const attrs = [{ name: 'commonName', value: 'localhost' }];
-  const pems = await selfsigned.generate(attrs, {
-    days: 3650,
-    keySize: 2048,
-    algorithm: 'sha256',
-    extensions: [
-      { name: 'subjectAltName', altNames: [
-        { type: 2, value: 'localhost' },
-        { type: 7, ip: '127.0.0.1' },
-      ]},
-    ],
-  });
+  const callbackUrl = process.env.CALLBACK_URL || '';
+  const useHttps = callbackUrl.startsWith('https://');
+  const scheme = useHttps ? 'https' : 'http';
 
-  const server = https.createServer(
-    { key: pems.private, cert: pems.cert, minVersion: 'TLSv1.2' },
-    async (req, res) => {
-    const reqUrl = new URL(req.url, `https://localhost:${serverPort}`);
-
+  const requestHandler = async (req, res) => {
+    const reqUrl = new URL(req.url, `${scheme}://localhost:${serverPort}`);
     try {
       if (req.method === 'GET' && reqUrl.pathname === '/') {
         await handleDashboard(req, res);
@@ -105,11 +94,32 @@ export async function startAuthServer() {
       res.writeHead(500);
       res.end('Internal server error');
     }
-  });
+  };
+
+  let server;
+  if (useHttps) {
+    const attrs = [{ name: 'commonName', value: 'localhost' }];
+    const pems = await selfsigned.generate(attrs, {
+      days: 3650,
+      keySize: 2048,
+      algorithm: 'sha256',
+      extensions: [{ name: 'subjectAltName', altNames: [
+        { type: 2, value: 'localhost' },
+        { type: 7, ip: '127.0.0.1' },
+      ]}],
+    });
+    server = https.createServer({ key: pems.private, cert: pems.cert, minVersion: 'TLSv1.2' }, requestHandler);
+  } else {
+    server = http.createServer(requestHandler);
+  }
 
   server.listen(serverPort, '0.0.0.0', () => {
-    console.log(chalk.bold.cyan(`\n🌐 Auth server listening on https://0.0.0.0:${serverPort}`));
-    console.log(chalk.cyan(`   Open https://localhost:${serverPort} in a browser (accept the self-signed cert warning).\n`));
+    console.log(chalk.bold.cyan(`\n🌐 Auth server listening on ${scheme}://0.0.0.0:${serverPort}`));
+    if (useHttps) {
+      console.log(chalk.cyan(`   Open https://localhost:${serverPort} in a browser (accept the self-signed cert warning).\n`));
+    } else {
+      console.log(chalk.cyan(`   Open http://localhost:${serverPort} in a browser.\n`));
+    }
   });
 
   return server;
