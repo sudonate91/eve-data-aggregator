@@ -62,7 +62,11 @@ if [ ! -f "${INIT_DONE_MARKER}" ]; then
   echo "[entrypoint] First boot detected — initialising MySQL..."
 
   # Initialise the data directory (creates system tables, no root password yet)
-  mysqld --initialize-insecure --user=mysql --datadir="${MYSQL_DATA_DIR}"
+  mysqld --initialize-insecure --user=mysql --datadir="${MYSQL_DATA_DIR}" 2>&1 || {
+    echo "[entrypoint] ERROR: mysqld --initialize-insecure failed (exit $?)"
+    mysqld --initialize-insecure --user=mysql --datadir="${MYSQL_DATA_DIR}" --log-error-verbosity=3 2>&1
+    exit 1
+  }
 
   # Start MySQL temporarily to run setup SQL (skip-networking so no external access yet)
   mysqld --user=mysql --skip-networking --socket=/run/mysqld/mysqld.sock &
