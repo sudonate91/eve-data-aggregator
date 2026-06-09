@@ -9,7 +9,7 @@
 # 4. Hand off to node bin/index.mjs.
 # ============================================================
 
-set -euo pipefail
+set -uo pipefail
 
 MYSQL_DATA_DIR="/var/lib/mysql"
 INIT_DONE_MARKER="${MYSQL_DATA_DIR}/.eve_initialized"
@@ -61,12 +61,12 @@ wait_for_mysql() {
 if [ ! -f "${INIT_DONE_MARKER}" ]; then
   echo "[entrypoint] First boot detected — initialising MySQL..."
 
-  # Ensure required directories exist with correct ownership
+  echo "[entrypoint] Creating directories..."
   mkdir -p "${MYSQL_DATA_DIR}" /run/mysqld /var/log/mysql
+  echo "[entrypoint] Setting ownership..."
   chown -R mysql:mysql "${MYSQL_DATA_DIR}" /run/mysqld /var/log/mysql
   chmod 750 "${MYSQL_DATA_DIR}"
-
-  # Initialise the data directory
+  echo "[entrypoint] Running mysqld --initialize-insecure..."
   /usr/sbin/mysqld --initialize-insecure --user=mysql --datadir="${MYSQL_DATA_DIR}" 2>&1
   echo "[entrypoint] mysqld init complete (exit $?)"
 
