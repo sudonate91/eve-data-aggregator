@@ -90,6 +90,12 @@ if [ ! -f "${INIT_DONE_MARKER}" ]; then
     FLUSH PRIVILEGES;
 EOSQL
 
+  # Create app user FIRST so 01-create-databases.sql GRANT statements work
+  /usr/bin/mysql -u root --password="${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock <<-EOSQL
+    CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
+    FLUSH PRIVILEGES;
+EOSQL
+
   # Run init scripts in order
   for f in /app/db/init/00-readonly-user.sh \
             /app/db/init/01-create-databases.sql \
@@ -108,17 +114,6 @@ EOSQL
         ;;
     esac
   done
-
-  # Create app user
-  /usr/bin/mysql -u root --password="${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock <<-EOSQL
-    CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
-    GRANT ALL PRIVILEGES ON S0b.*        TO '${DB_USER}'@'%';
-    GRANT ALL PRIVILEGES ON S0b_Struct.* TO '${DB_USER}'@'%';
-    GRANT ALL PRIVILEGES ON Ven0m.*      TO '${DB_USER}'@'%';
-    GRANT ALL PRIVILEGES ON KryTek.*     TO '${DB_USER}'@'%';
-    GRANT ALL PRIVILEGES ON S0b_Mart.*   TO '${DB_USER}'@'%';
-    FLUSH PRIVILEGES;
-EOSQL
 
   # Allow external connections
   mkdir -p /etc/mysql/conf.d
@@ -143,6 +138,7 @@ fi
 echo "[entrypoint] Starting MySQL server..."
 mkdir -p /run/mysqld /var/log/mysql
 chown -R mysql:mysql /run/mysqld /var/log/mysql "${MYSQL_DATA_DIR}"
+rm -f /run/mysqld/mysqld.sock /run/mysqld/mysqld.pid
 
 /usr/sbin/mysqld --user=mysql \
        --bind-address=0.0.0.0 \

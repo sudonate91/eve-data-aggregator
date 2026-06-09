@@ -20,8 +20,9 @@ CREATE DATABASE IF NOT EXISTS Ven0m CHARACTER SET utf8mb4 COLLATE utf8mb4_unicod
 CREATE DATABASE IF NOT EXISTS KryTek CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS S0b_Mart CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- Grant S0b_Admin (created by MySQL from MYSQL_USER/MYSQL_PASSWORD) access to all DBs.
--- MYSQL_DATABASE only grants access to the one DB named there; we extend it here.
+-- S0b_Admin is created by the entrypoint with the correct password.
+-- This file only grants privileges; the user must already exist.
+-- (Grants are idempotent — safe to re-run.)
 GRANT ALL PRIVILEGES ON S0b.*        TO 'S0b_Admin'@'%';
 GRANT ALL PRIVILEGES ON S0b_Struct.* TO 'S0b_Admin'@'%';
 GRANT ALL PRIVILEGES ON Ven0m.*      TO 'S0b_Admin'@'%';
