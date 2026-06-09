@@ -29,6 +29,7 @@
     "jwk-to-pem": "^2.0.6",
     "mysql2": "^3.11.3",
     "node-fetch": "^2.6.1",
+    "selfsigned": "^2.4.1",
     "sequelize": "^6.37.3"
   },
   "bin": {
