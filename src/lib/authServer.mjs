@@ -359,21 +359,15 @@ async function handleMigrate(req, res) {
   const sqlBuffer = fileBuffer.slice(fileStart, fileEnd);
   res.write(`File received (${(sqlBuffer.length / 1024 / 1024).toFixed(1)} MB). Starting MySQL import...\n`);
 
-  // In production the mysql CLI is in the same container (PATH works).
-  // In local dev (Node on Windows host) we go through docker exec into the MySQL sidecar.
-  const isLocalDev = process.env.NODE_ENV !== 'production';
+  const isInsideContainer = process.env.USE_ENV_CONFIG === 'true';
   const devContainer = process.env.MYSQL_CONTAINER_NAME || 'eve-mysql-dev';
-
-  const [cmd, args] = isLocalDev
-    ? ['docker', ['exec', '-i', devContainer, 'mysql', '-u', 'root', `-p${rootPw}`]]
-    : ['mysql', ['-u', 'root', `-p${rootPw}`, '-h', host, '-P', String(port)]];
+  const [cmd, args] = isInsideContainer
+    ? ['/usr/bin/mysql', ['-u', 'root', `-p${rootPw}`, '--socket=/run/mysqld/mysqld.sock']]
+    : ['docker', ['exec', '-i', devContainer, 'mysql', '-u', 'root', `-p${rootPw}`]];
 
   const proc = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'pipe'] });
   proc.on('error', (err) => {
     res.write(`\nERROR: ${err.message}\n`);
-    if (err.code === 'ENOENT' && isLocalDev) {
-      res.write('Docker not found on PATH — is Docker Desktop running?\n');
-    }
     res.end();
   });
   proc.stdout.on('data', d => res.write(d.toString()));
