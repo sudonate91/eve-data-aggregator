@@ -45,13 +45,16 @@ export MYSQL_ROOT_PASSWORD DB_USER DB_PASSWORD MYSQL_READONLY_PASSWORD
 # ── Helper: wait for MySQL to be ready ──────────────────────────────────────
 wait_for_mysql() {
   echo "[entrypoint] Waiting for MySQL to be ready..."
-  local retries=30
+  local retries=60
   while ! /usr/bin/mysqladmin ping -u root --password="${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock --silent 2>/dev/null; do
     retries=$((retries - 1))
     if [ "$retries" -eq 0 ]; then
       echo "[entrypoint] ERROR: MySQL did not become ready in time."
+      echo "[entrypoint] MySQL error log:"
+      tail -20 /var/log/mysql/error.log 2>/dev/null || true
       exit 1
     fi
+    echo "[entrypoint] Waiting for MySQL... (${retries} retries left)"
     sleep 2
   done
   echo "[entrypoint] MySQL is ready."
@@ -126,6 +129,9 @@ CNF
   # Stop temp server gracefully
   /usr/bin/mysqladmin -u root --password="${MYSQL_ROOT_PASSWORD}" --socket=/run/mysqld/mysqld.sock shutdown || true
   wait $MYSQL_TEMP_PID 2>/dev/null || true
+  sleep 5
+  # Kill any lingering mysqld processes
+  pkill -x mysqld 2>/dev/null || true
   sleep 2
 
   touch "${INIT_DONE_MARKER}"
@@ -138,14 +144,19 @@ fi
 echo "[entrypoint] Starting MySQL server..."
 mkdir -p /run/mysqld /var/log/mysql
 chown -R mysql:mysql /run/mysqld /var/log/mysql "${MYSQL_DATA_DIR}"
-rm -f /run/mysqld/mysqld.sock /run/mysqld/mysqld.pid
+rm -f /run/mysqld/mysqld.sock /run/mysqld/mysqld.pid /var/lib/mysql/mysql.sock
 
 /usr/sbin/mysqld --user=mysql \
        --bind-address=0.0.0.0 \
        --port=3306 \
-       --socket=/run/mysqld/mysqld.sock &
+       --socket=/run/mysqld/mysqld.sock \
+       --log-error=/var/log/mysql/error.log &
+MYSQL_PID=$!
+echo "[entrypoint] mysqld started with PID ${MYSQL_PID}"
 
 wait_for_mysql
+echo "[entrypoint] MySQL log tail:"
+tail -5 /var/log/mysql/error.log 2>/dev/null || true
 
 echo "[entrypoint] Starting EVE Data Aggregator..."
 exec node /app/bin/index.mjs
