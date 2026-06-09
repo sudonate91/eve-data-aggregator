@@ -3,7 +3,7 @@
   <Name>eve-data-aggregator</Name>
   <Repository>sudonate91/eve-data-aggregator:latest</Repository>
   <Registry>https://hub.docker.com/r/sudonate91/eve-data-aggregator</Registry>
-  <Network>host</Network>
+  <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
