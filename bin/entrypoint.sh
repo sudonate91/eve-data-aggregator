@@ -61,17 +61,14 @@ wait_for_mysql() {
 if [ ! -f "${INIT_DONE_MARKER}" ]; then
   echo "[entrypoint] First boot detected — initialising MySQL..."
 
-  # Initialise the data directory (creates system tables, no root password yet)
-  set +e
-  INIT_OUTPUT=$(mysqld --initialize-insecure --user=mysql --datadir="${MYSQL_DATA_DIR}" --log-error-verbosity=3 2>&1)
-  INIT_EXIT=$?
-  set -e
-  echo "[entrypoint] mysqld init output:"
-  echo "${INIT_OUTPUT}"
-  if [ $INIT_EXIT -ne 0 ]; then
-    echo "[entrypoint] ERROR: mysqld --initialize-insecure failed with exit code ${INIT_EXIT}"
-    exit 1
-  fi
+  # Ensure required directories exist with correct ownership
+  mkdir -p "${MYSQL_DATA_DIR}" /run/mysqld /var/log/mysql
+  chown -R mysql:mysql "${MYSQL_DATA_DIR}" /run/mysqld /var/log/mysql
+  chmod 750 "${MYSQL_DATA_DIR}"
+
+  # Initialise the data directory
+  mysqld --initialize-insecure --user=mysql --datadir="${MYSQL_DATA_DIR}" 2>&1
+  echo "[entrypoint] mysqld init complete (exit $?)"
 
   # Start MySQL temporarily to run setup SQL (skip-networking so no external access yet)
   mysqld --user=mysql --skip-networking --socket=/run/mysqld/mysqld.sock &
@@ -144,8 +141,8 @@ fi
 
 # ── Start MySQL for real ─────────────────────────────────────────────────────
 echo "[entrypoint] Starting MySQL server..."
-mkdir -p /run/mysqld
-chown mysql:mysql /run/mysqld 2>/dev/null || true
+mkdir -p /run/mysqld /var/log/mysql
+chown -R mysql:mysql /run/mysqld /var/log/mysql "${MYSQL_DATA_DIR}"
 
 mysqld --user=mysql \
        --bind-address=0.0.0.0 \
