@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>eve-data-aggregator-v2</Name>
-  <Repository>sudonate91/eve-data-aggregator:v2</Repository>
+  <Repository>sudonate91/eve-data-aggregator:latest</Repository>
   <Registry>https://hub.docker.com/r/sudonate91/eve-data-aggregator</Registry>
   <Network>bridge</Network>
   <MyIP/>
