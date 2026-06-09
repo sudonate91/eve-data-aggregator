@@ -14,6 +14,7 @@ import krytekSequelize from '../src/utils/krytekSequelizeClient.mjs';
 import s0bMartSequelize from '../src/utils/s0bMartSequelizeClient.mjs';
 import { importCsvToDb } from '../src/utils/csvWalletHistory.mjs';
 import { configureAuthServer, startAuthServer, allTokensPresent } from '../src/lib/authServer.mjs';
+import { ensureReadonlyUser } from '../src/utils/ensureReadonlyUser.mjs';
 
 dotenv.config();
 
@@ -226,6 +227,7 @@ const initialize = async () => {
         '✓ Database connection to S0b has been established successfully.',
       ),
     );
+    await ensureReadonlyUser(sequelize);
 
     await structSequelize.authenticate();
     console.log(
@@ -233,6 +235,7 @@ const initialize = async () => {
         '✓ Database connection to S0b_Struct has been established successfully.',
       ),
     );
+    await ensureReadonlyUser(structSequelize);
 
     await ven0mSequelize.authenticate();
     console.log(
@@ -240,6 +243,7 @@ const initialize = async () => {
         '✓ Database connection to Ven0m has been established successfully.',
       ),
     );
+    await ensureReadonlyUser(ven0mSequelize);
 
     await krytekSequelize.authenticate();
     console.log(
@@ -247,6 +251,7 @@ const initialize = async () => {
         '✓ Database connection to KryTek has been established successfully.',
       ),
     );
+    await ensureReadonlyUser(krytekSequelize);
 
     await s0bMartSequelize.authenticate();
     console.log(
@@ -254,6 +259,7 @@ const initialize = async () => {
         '✓ Database connection to S0b_Mart has been established successfully.',
       ),
     );
+    await ensureReadonlyUser(s0bMartSequelize);
   } catch (err) {
     console.error(chalk.red('✗ Unable to connect to the database:', err));
     process.exit(1);

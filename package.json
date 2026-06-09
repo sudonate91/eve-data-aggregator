@@ -8,7 +8,12 @@
     "npm": "10.8.3"
   },
   "scripts": {
-    "start": "node index.mjs",
+    "start": "dotenv -e .env -- node bin/index.mjs",
+    "dev": "dotenv -e .env.local -- node bin/index.mjs",
+    "dev:db": "docker compose -f docker-compose.dev.yml --env-file .env.local up eve-mysql",
+    "dev:db:reset": "docker compose -f docker-compose.dev.yml --env-file .env.local down -v && docker compose -f docker-compose.dev.yml --env-file .env.local up eve-mysql",
+    "dev:compose": "docker compose -f docker-compose.dev.yml --env-file .env.local up",
+    "dev:compose:down": "docker compose -f docker-compose.dev.yml --env-file .env.local down",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint .",
     "lint-fix": "prettier --write .",

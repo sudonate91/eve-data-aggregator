@@ -1,9 +1,9 @@
 # Development compose — standalone file for local dev.
 #
 # Usage:
-#   npm run db:dev          — start MySQL only (use node locally)
-#   npm run compose:dev     — start MySQL + app together
-#   npm run compose:down    — stop everything
+#   npm run dev:db          — start MySQL only (use node locally)
+#   npm run dev:compose     — start MySQL + app together
+#   npm run dev:compose:down — stop everything
 #
 # Dev vs prod:
 #   - Separate MySQL sidecar (mysql:8.4 image) — fast init, no Ubuntu overhead
@@ -11,6 +11,9 @@
 #   - Source volume-mounted — edit files, re-run node, no rebuilds needed
 #   - Isolated dev data volume (eve-mysql-dev-data) — wipe freely
 #   - DB_HOST=eve-mysql (internal docker network) or 127.0.0.1 (native node)
+#
+# Environment:
+#   Uses .env.local by default (configured in package.json scripts)
 
 services:
   eve-mysql:
