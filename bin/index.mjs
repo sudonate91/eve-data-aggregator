@@ -318,10 +318,18 @@ const main = async () => {
     configureAuthServer(jobDefs, parseInt(process.env.AUTH_PORT || '3000'));
 
     const tokensReady = await allTokensPresent();
+    
+    // Always start auth server for status dashboard and DB credentials
     if (!tokensReady) {
-      console.log(chalk.yellow('\n⚠  Some tokens are missing — starting auth server. Visit the URL below to authenticate.\n'));
-      await startAuthServer();
-      // Poll until all tokens are present
+      console.log(chalk.yellow('\n⚠  Some tokens are missing — visit the URL below to authenticate.\n'));
+    } else {
+      console.log(chalk.green('\n✓ All tokens present — web UI available for status & credentials.\n'));
+    }
+    
+    await startAuthServer();
+    
+    // If tokens were missing, poll until all are present before running jobs
+    if (!tokensReady) {
       await new Promise((resolve) => {
         const poll = setInterval(async () => {
           if (await allTokensPresent()) {
