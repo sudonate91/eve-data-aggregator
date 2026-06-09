@@ -51,5 +51,5 @@
   <Config Name="Enable S0b Struct Contracts Import" Target="ENABLE_S0B_STRUCT_CONTRACTS" Default="true" Mode="" Description="Enable S0b_Struct contracts import" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Enable CSV Import" Target="ENABLE_CSV_IMPORT" Default="false" Mode="" Description="Enable CSV data import to database" Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="App Port" Target="3000" Default="3000" Mode="tcp" Description="Auth UI web port" Type="Port" Display="always" Required="true" Mask="false"/>
-  <Config Name="MySQL Data" Target="/var/lib/mysql" Default="eve-data-v2" Mode="rw" Description="Persistent MySQL data volume" Type="Volume" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MySQL Data" Target="/var/lib/mysql" Default="/mnt/user/appdata/eve-data-aggregator-v2/mysql" Mode="rw" Description="Persistent MySQL data directory (host path)" Type="Path" Display="always" Required="true" Mask="false"/>
 </Container>
