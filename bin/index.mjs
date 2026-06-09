@@ -13,6 +13,7 @@ import ven0mSequelize from '../src/utils/ven0mSequelizeClient.mjs';
 import krytekSequelize from '../src/utils/krytekSequelizeClient.mjs';
 import s0bMartSequelize from '../src/utils/s0bMartSequelizeClient.mjs';
 import { importCsvToDb } from '../src/utils/csvWalletHistory.mjs';
+import { configureAuthServer, startAuthServer, allTokensPresent } from '../src/lib/authServer.mjs';
 
 dotenv.config();
 
@@ -296,6 +297,36 @@ const main = async () => {
   await initialize();
 
   const intervalMs = await getRunInterval();
+
+  // In env-config (Docker) mode: start auth server if any tokens are missing
+  if (useEnvConfig) {
+    const allJobDefs = [
+      { jobKey: 'importS0bHoldingsWalletData',             label: 'S0b Holdings',            db: sequelize,       envKey: 'ENABLE_S0B_WALLET' },
+      { jobKey: 'importS0bStructureManagementWalletData',  label: 'S0b Struct Management',   db: structSequelize, envKey: 'ENABLE_S0B_STRUCT_WALLET' },
+      { jobKey: 'importVen0mWalletData',                   label: 'Ven0m',                   db: ven0mSequelize,  envKey: 'ENABLE_VEN0M_WALLET' },
+      { jobKey: 'importKryTekWalletData',                  label: 'KryTek',                  db: krytekSequelize, envKey: 'ENABLE_KRYTEK_WALLET' },
+      { jobKey: 'importS0bMartWalletData',                 label: 'S0b-Mart',                db: s0bMartSequelize,envKey: 'ENABLE_S0B_MART_WALLET' },
+      { jobKey: 'importS0bStructContracts',                label: 'S0b_Struct Contracts',    db: structSequelize, envKey: 'ENABLE_S0B_STRUCT_CONTRACTS' },
+    ];
+    const jobDefs = allJobDefs.filter(j => process.env[j.envKey] === 'true');
+    configureAuthServer(jobDefs, parseInt(process.env.AUTH_PORT || '3000'));
+
+    const tokensReady = await allTokensPresent();
+    if (!tokensReady) {
+      console.log(chalk.yellow('\n⚠  Some tokens are missing — starting auth server. Visit the URL below to authenticate.\n'));
+      await startAuthServer();
+      // Poll until all tokens are present
+      await new Promise((resolve) => {
+        const poll = setInterval(async () => {
+          if (await allTokensPresent()) {
+            clearInterval(poll);
+            console.log(chalk.green('\n✓ All tokens present. Starting jobs...\n'));
+            resolve();
+          }
+        }, 5000);
+      });
+    }
+  }
 
   await runJobs();
 
