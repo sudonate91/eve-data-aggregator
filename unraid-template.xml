@@ -51,5 +51,8 @@
   <Config Name="Enable S0b Struct Contracts Import" Target="ENABLE_S0B_STRUCT_CONTRACTS" Default="true" Mode="" Description="Enable S0b_Struct contracts import" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Enable CSV Import" Target="ENABLE_CSV_IMPORT" Default="false" Mode="" Description="Enable CSV data import to database" Type="Variable" Display="advanced" Required="false" Mask="false"/>
   <Config Name="App Port" Target="3000" Default="3000" Mode="tcp" Description="Auth UI web port" Type="Port" Display="always" Required="true" Mask="false"/>
+  <Config Name="MySQL Port" Target="3306" Default="3307" Mode="tcp" Description="MySQL port exposed to host (use Unraid IP + this port in Power BI)" Type="Port" Display="always" Required="false" Mask="false"/>
+  <Config Name="External Host" Target="EXTERNAL_HOST" Default="192.168.1.23" Mode="" Description="Your Unraid IP — shown in the web UI for Power BI connection info" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="External MySQL Port" Target="EXTERNAL_MYSQL_PORT" Default="3307" Mode="" Description="Host port mapped to MySQL (must match MySQL Port above)" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="MySQL Data" Target="/var/lib/mysql" Default="/mnt/user/appdata/eve-data-aggregator-v2/mysql" Mode="rw" Description="Persistent MySQL data directory (host path)" Type="Path" Display="always" Required="true" Mask="false"/>
 </Container>

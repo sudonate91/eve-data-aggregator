@@ -272,8 +272,8 @@ const DB_SEQUELIZE_MAP = {
 
 function handleDbCredentials(req, res) {
   const passwordsFile = '/var/lib/mysql/.eve_passwords';
-  const host = process.env.DB_HOST || '127.0.0.1';
-  const port = process.env.DB_PORT || '3307';
+  const host = process.env.EXTERNAL_HOST || process.env.DB_HOST || '127.0.0.1';
+  const port = process.env.EXTERNAL_MYSQL_PORT || '3307';
   let readonlyPassword = '(not available in local dev)';
   try {
     if (fs.existsSync(passwordsFile)) {
